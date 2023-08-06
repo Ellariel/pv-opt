@@ -1,4 +1,4 @@
-import json, time, requests, uuid, os
+import json, time, requests, uuid, os, datetime
 import pandas as pd, numpy as np
 from pandas import json_normalize
 
@@ -6,6 +6,13 @@ def is_empty(x):
     if isinstance(x, (list, dict, str, pd.DataFrame)):
         return len(x) == 0
     return pd.isna(x)
+
+def _timestamp(x):
+    return time.mktime(datetime.datetime.strptime(x, "%Y%m%d:%H%M").timetuple())
+
+def _serie(x, datatype='hourly', name='pv'):
+    v = [(_timestamp(i['time']), i['P']) for i in x[datatype]]
+    return pd.DataFrame(v).rename(columns={0:'timestamp', 1:name}).set_index('timestamp')
 
 def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss=14, lat=52.373, lon=9.738, startyear=2016, endyear=2016, timeout=3):
     # https://re.jrc.ec.europa.eu/pvg_tools/en/tools.html
@@ -58,8 +65,8 @@ def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.7
         with open(os.path.join(outputs_store, file_name), 'w') as outfile:
             json.dump(pv_raw_data['outputs'], outfile)
         pd.concat([inputs, data_key], ignore_index=True).to_csv(inputs_store, sep=';', index=False)
-        return pv_raw_data['outputs']
+        return _serie(pv_raw_data['outputs'], datatype=datatype)
     else:
       filtered = filtered.sort_values(by='data.timestamp', ascending=False)
       with open(os.path.join(outputs_store, filtered.iloc[0]['outputs']), 'r') as infile:
-            return json.load(infile)      
+            return _serie(json.load(infile), datatype=datatype)      
