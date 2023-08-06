@@ -60,6 +60,6 @@ def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.7
         pd.concat([inputs, data_key], ignore_index=True).to_csv(inputs_store, sep=';', index=False)
         return pv_raw_data['outputs']
     else:
-      filtered.sort_values(by='data.timestamp', ascending=False, inplace=True)
+      filtered = filtered.sort_values(by='data.timestamp', ascending=False)
       with open(os.path.join(outputs_store, filtered.iloc[0]['outputs']), 'r') as infile:
             return json.load(infile)      
