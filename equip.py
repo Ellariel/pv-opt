@@ -40,12 +40,12 @@ class Building:
         self._consumption = None   
         
     def get_production(self):
-        if not isinstance(self._production, pd.Series):
+        if not isinstance(self._production, (pd.Series, pd.DataFrame)):
             self._production = _calc_building_production(self)
         return self._production
     
     def get_consumption(self):
-        if not isinstance(self._consumption, pd.Series):
+        if not isinstance(self._consumption, (pd.Series, pd.DataFrame)):
             self._consumption = _mook_building_consumption(self)
         return self._consumption
     
@@ -87,5 +87,6 @@ def _mook_building_consumption(b):
     pv = b.production
     m = pv.mean()
     sd = pv.std()
-    return np.abs(np.random.normal(m, 0.5*sd, len(pv)) - 50)
+    pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv)) - 50)
+    return pv[['consumption']]
 
