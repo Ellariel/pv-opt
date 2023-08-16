@@ -39,8 +39,10 @@ class Building:
         self._production = None
         self._consumption = None
         self._total_renting_costs = None
+        self._total_solar_energy_consumption = None
+        self._total_solar_energy_underproduction = None
         
-    def total_renting_costs(self):
+    def get_total_renting_costs(self):
         if self._total_renting_costs == None:
             self._total_renting_costs = 0
             for loc in self._locations:
@@ -50,11 +52,15 @@ class Building:
                 self._total_renting_costs += total_sq * loc.price_per_sqm              
         return self._total_renting_costs        
     
-    def total_solar_energy_consumption(self):
-        return min(self.production['production'].sum(), self.consumption['consumption'].sum())
+    def get_total_solar_energy_consumption(self):
+        if self._total_solar_energy_consumption == None:
+            self._total_solar_energy_consumption = min(self.production['production'].sum(), self.consumption['consumption'].sum())
+        return self._total_solar_energy_consumption
 
-    def total_solar_energy_underproduction(self):
-        return max(0, self.consumption['consumption'].sum() - self.production['production'].sum())
+    def get_total_solar_energy_underproduction(self):
+        if self._total_solar_energy_underproduction == None:
+            self._total_solar_energy_underproduction = max(0, self.consumption['consumption'].sum() - self.production['production'].sum())
+        return self._total_solar_energy_underproduction
         
     def get_production(self):
         if not isinstance(self._production, (pd.Series, pd.DataFrame)):
@@ -69,8 +75,14 @@ class Building:
     def set_locations(self, value):
         if self._locations != value:
             self._locations = value
-            self._production = self.get_production()
-            self._total_renting_costs = self.get_total_renting_costs()
+            self._production = None
+            self._total_renting_costs = None
+            self._total_solar_energy_consumption = None
+            self._total_solar_energy_underproduction = None
+            self.get_production()
+            self.get_total_renting_costs()
+            self.get_total_solar_energy_consumption()
+            self.get_total_solar_energy_underproduction()
             
     def get_locations(self):
         return self._locations
@@ -79,6 +91,8 @@ class Building:
     production = property(fget=get_production)
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
+    total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
+    total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
 
 def _calc_equipment_production(loc, eq):
     nominal_pv = utils.get_nominal_pv(angle=loc.angle,
