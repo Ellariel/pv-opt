@@ -37,7 +37,18 @@ class Building:
         self.lon = 9.738
         self._locations = []
         self._production = None
-        self._consumption = None   
+        self._consumption = None
+        self._total_renting_costs = None
+        
+    def get_total_renting_costs(self):
+        if self._total_renting_costs == None:
+            self._total_renting_costs = 0
+            for loc in self._locations:
+                total_sq = 0
+                for eq in loc.equipment:
+                    total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
+                self._total_renting_costs += total_sq * loc.price_per_sqm              
+        return self._total_renting_costs        
         
     def get_production(self):
         if not isinstance(self._production, (pd.Series, pd.DataFrame)):
@@ -53,6 +64,7 @@ class Building:
         if self._locations != value:
             self._locations = value
             self._production = self.get_production()
+            self._total_renting_costs = self.get_total_renting_costs()
             
     def get_locations(self):
         return self._locations
@@ -60,6 +72,7 @@ class Building:
     locations = property(fget=get_locations, fset=set_locations)
     production = property(fget=get_production)
     consumption = property(fget=get_consumption)
+    total_renting_costs = property(fget=get_total_renting_costs)
 
 def _calc_equipment_production(loc, eq):
     nominal_pv = utils.get_nominal_pv(angle=loc.angle,
@@ -68,7 +81,8 @@ def _calc_equipment_production(loc, eq):
                              loss=eq.pv_loss, 
                              lat=loc.lat, 
                              lon=loc.lon,)
-    return (nominal_pv / 1000) * eq.pv_watt_peak * eq.pv_count
+    production = (nominal_pv / 1000) * eq.pv_watt_peak * eq.pv_count
+    return production.rename(columns={'pv' : 'production'})
 
 def _calc_location_production(loc):
     pv = 0
