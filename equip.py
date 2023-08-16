@@ -40,7 +40,7 @@ class Building:
         self._consumption = None
         self._total_renting_costs = None
         
-    def get_total_renting_costs(self):
+    def total_renting_costs(self):
         if self._total_renting_costs == None:
             self._total_renting_costs = 0
             for loc in self._locations:
