@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import json, random
+import json, random, math
 import utils
 
 class Location:
@@ -49,6 +49,12 @@ class Building:
                     total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
                 self._total_renting_costs += total_sq * loc.price_per_sqm              
         return self._total_renting_costs        
+    
+    def total_solar_energy_consumption(self):
+        return min(self.production['production'].sum(), self.consumption['consumption'].sum())
+
+    def total_solar_energy_underproduction(self):
+        return max(0, self.consumption['consumption'].sum() - self.production['production'].sum())
         
     def get_production(self):
         if not isinstance(self._production, (pd.Series, pd.DataFrame)):
