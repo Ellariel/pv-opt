@@ -4,7 +4,7 @@ import json, random, math
 import utils
 
 class Location:
-    def __init__(self):
+    def __init__(self, equipment=[]):
         self.uuid = None
         self.angle = 0
         self.aspect = 0
@@ -12,7 +12,7 @@ class Location:
         self.price_per_sqm = 1
         self.lat = 52.373
         self.lon = 9.738
-        self.equipment = []
+        self.equipment = equipment
 
 class Equipment:
     def __init__(self):
@@ -30,12 +30,12 @@ class Equipment:
         self.battery_price_per_Wh = 9.738
         
 class Building:
-    def __init__(self):
+    def __init__(self, locations=[]):
         self.uuid = None
         self.address = 'Hannover'
         self.lat = 52.373
         self.lon = 9.738
-        self._locations = []
+        self._locations = locations
         self._production = None
         self._consumption = None
         self._total_renting_costs = None
@@ -75,17 +75,20 @@ class Building:
     def set_locations(self, value):
         if self._locations != value:
             self._locations = value
-            self._production = None
-            self._total_renting_costs = None
-            self._total_solar_energy_consumption = None
-            self._total_solar_energy_underproduction = None
-            self.get_production()
-            self.get_total_renting_costs()
-            self.get_total_solar_energy_consumption()
-            self.get_total_solar_energy_underproduction()
+            self.updated()
             
     def get_locations(self):
         return self._locations
+    
+    def updated(self):
+        self._production = None
+        self._total_renting_costs = None
+        self._total_solar_energy_consumption = None
+        self._total_solar_energy_underproduction = None
+        self.get_production()
+        self.get_total_renting_costs()
+        self.get_total_solar_energy_consumption()
+        self.get_total_solar_energy_underproduction()        
     
     locations = property(fget=get_locations, fset=set_locations)
     production = property(fget=get_production)
@@ -121,6 +124,6 @@ def _mook_building_consumption(b):
     pv = b.production
     m = pv.mean()
     sd = pv.std()
-    pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv)) - 50)
+    pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv))) * 5
     return pv[['consumption']]
 
