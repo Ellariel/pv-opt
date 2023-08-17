@@ -16,9 +16,14 @@ def from_json(json_data):
 def _timestamp(x):
     return time.mktime(datetime.datetime.strptime(x, "%Y%m%d:%H%M").timetuple())
 
+def _datetime(x):
+    return datetime.datetime.strptime(x, "%Y%m%d:%H%M")
+
 def _serie(x, datatype='hourly', name='pv'):
-    v = [(_timestamp(i['time']), i['P']) for i in x[datatype]]
-    return pd.DataFrame(v).rename(columns={0:'timestamp', 1:name}).set_index('timestamp')
+    v = [(_datetime(i['time']), i['P']) for i in x[datatype]]
+    v = pd.DataFrame(v).rename(columns={0:'timestamp', 1:name})
+    v['timestamp'] = pd.DatetimeIndex(v['timestamp'])
+    return v.set_index('timestamp')
 
 def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss=14, lat=52.373, lon=9.738, startyear=2016, endyear=2016, timeout=3):
     # https://re.jrc.ec.europa.eu/pvg_tools/en/tools.html

@@ -3,6 +3,35 @@ import numpy as np
 import json, random, math
 import utils
 
+# https://www.youtube.com/watch?v=OPNBWaBZvjc&ab_channel=%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B9%D1%84%D0%BE%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84
+# https://www.youtube.com/watch?v=Oriqr7K9kAc&ab_channel=%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B9%D1%84%D0%BE%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84
+# потребление - 1 кВт 8 часов в сутки
+# аккумулятор - 12 В х 60 Ah = 720 Втч * 0,7 = 504 Втч - полчас
+        
+class Battery:
+    def __init__(self):
+        self.uuid = None
+        self.type = 'LiFePO4'
+        self.battery_count = 1
+        self.battery_capacity_Ah = 100
+        self.battery_energy_Wh = 4800
+        self.battery_voltage = 48
+        self.battery_discharge_factor = 0.7
+        self.battery_price_per_Wh = 9.738 
+
+class Equipment:
+    def __init__(self, battery=[]):
+        self.uuid = None
+        self.type = 'CIS'
+        self.pv_count = 1
+        self.pv_size_mm = (2176, 1098)
+        self.pv_efficiency = 18
+        self.pv_watt_peak = 500
+        self.pv_price_per_Wp = 0.90
+        self.pv_loss = 14
+        self.pv_voltage = 48
+        self.battery = battery     
+
 class Location:
     def __init__(self, equipment=[]):
         self.uuid = None
@@ -13,21 +42,6 @@ class Location:
         self.lat = 52.373
         self.lon = 9.738
         self.equipment = equipment
-
-class Equipment:
-    def __init__(self):
-        self.uuid = None
-        self.type = 'CIS'
-        self.pv_count = 1
-        self.pv_size_mm = (2176, 1098)
-        self.pv_efficiency = 18
-        self.pv_watt_peak = 500
-        self.pv_price_per_Wp = 0.90
-        self.pv_loss = 14
-        self.battery_count = 1
-        self.battery_capacity_Ah = 100
-        self.battery_energy_Wh = 24000
-        self.battery_price_per_Wh = 9.738
         
 class Building:
     def __init__(self, locations=[]):
@@ -91,7 +105,7 @@ class Building:
         self.get_total_solar_energy_underproduction()        
     
     locations = property(fget=get_locations, fset=set_locations)
-    production = property(fget=get_production)
+    production = property(fget=get_production) # {"P": {"description": "PV system power", "units": "W"}
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
     total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
@@ -121,7 +135,7 @@ def _calc_building_production(b):
 
 def _mook_building_consumption(b):
     np.random.seed(13)
-    pv = b.production
+    pv = b.production.copy()
     m = pv.mean()
     sd = pv.std()
     pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv))) * 5
