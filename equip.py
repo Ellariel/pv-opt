@@ -53,6 +53,7 @@ class Building:
         self._production = None
         self._consumption = None
         self._total_renting_costs = None
+        self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         
@@ -65,7 +66,12 @@ class Building:
                     total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
                 self._total_renting_costs += total_sq * loc.price_per_sqm              
         return self._total_renting_costs        
-    
+
+    def get_total_energy_storage_needed(self):
+        if self._total_energy_storage_needed == None:
+            self._total_energy_storage_needed = _calc_total_energy_storage_needed(self)
+        return self._total_energy_storage_needed
+
     def get_total_solar_energy_consumption(self):
         if self._total_solar_energy_consumption == None:
             self._total_solar_energy_consumption = min(self.production['production'].sum(), self.consumption['consumption'].sum())
@@ -97,17 +103,20 @@ class Building:
     def updated(self):
         self._production = None
         self._total_renting_costs = None
+        self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         self.get_production()
         self.get_total_renting_costs()
         self.get_total_solar_energy_consumption()
-        self.get_total_solar_energy_underproduction()        
+        self.get_total_solar_energy_underproduction()     
+        self.get_total_energy_storage_needed()   
     
     locations = property(fget=get_locations, fset=set_locations)
     production = property(fget=get_production) # {"P": {"description": "PV system power", "units": "W"}
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
+    total_energy_storage_needed = property(fget=get_total_energy_storage_needed)
     total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
 
@@ -133,11 +142,17 @@ def _calc_building_production(b):
       pv = pv + _calc_location_production(loc)
     return pv
 
-def _mook_building_consumption(b):
+def _mook_building_consumption(b, multiplicator=1):
     np.random.seed(13)
     pv = b.production.copy()
     m = pv.mean()
     sd = pv.std()
-    pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv))) * 5
+    pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv)) * multiplicator)
     return pv[['consumption']]
+
+def _calc_total_energy_storage_needed(b):
+    peak_daily_consumption = b.consumption.resample('D').sum().max()['consumption']
+    avg_daily_production = b.production.resample('D').sum().mean()['production']
+    autonomy_period_days = np.ceil(peak_daily_consumption / avg_daily_production)
+    return peak_daily_consumption * autonomy_period_days
 
