@@ -30,7 +30,16 @@ class Equipment:
         self.pv_price_per_Wp = 0.90
         self.pv_loss = 14
         self.pv_voltage = 48
-        self.battery = battery     
+        self.battery = battery
+        self._total_battery_costs = None   
+        
+    def get_total_battery_costs(self):
+        self._total_battery_costs = 0
+        for bt in self.battery:
+            self._total_battery_costs += bt.battery_energy_Wh * bt.battery_price_per_Wh * bt.battery_count             
+        return self._total_battery_costs   
+    
+    total_battery_costs = property(fget=get_total_battery_costs)
 
 class Location:
     def __init__(self, equipment=[]):
