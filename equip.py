@@ -159,9 +159,10 @@ def _mook_building_consumption(b, multiplicator=1):
     pv['consumption'] = np.abs(np.random.normal(m, 0.5*sd, len(pv)) * multiplicator)
     return pv[['consumption']]
 
-def _calc_total_energy_storage_needed(b):
+def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
     peak_daily_consumption = b.consumption.resample('D').sum().max()['consumption']
-    avg_daily_production = b.production.resample('D').sum().mean()['production']
-    autonomy_period_days = np.ceil(peak_daily_consumption / avg_daily_production)
+    if autonomy_period_days == None:
+        avg_daily_production = b.production.resample('D').sum().mean()['production']
+        autonomy_period_days = np.ceil(peak_daily_consumption / avg_daily_production)
     return peak_daily_consumption * autonomy_period_days
 
