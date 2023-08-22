@@ -36,7 +36,7 @@ class Equipment:
     def get_total_battery_costs(self):
         self._total_battery_costs = 0
         for bt in self.battery:
-            self._total_battery_costs += bt.battery_energy_Wh * bt.battery_price_per_Wh * bt.battery_count             
+            self._total_battery_costs += _calc_battery_costs(bt)          
         return self._total_battery_costs   
     
     total_battery_costs = property(fget=get_total_battery_costs)
@@ -165,4 +165,8 @@ def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
         avg_daily_production = b.production.resample('D').sum().mean()['production']
         autonomy_period_days = np.ceil(peak_daily_consumption / avg_daily_production)
     return peak_daily_consumption * autonomy_period_days
+
+def _calc_battery_costs(bt):
+    return bt.battery_energy_Wh * bt.battery_price_per_Wh * bt.battery_count
+
 
