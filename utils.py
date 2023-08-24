@@ -87,7 +87,7 @@ def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.7
         
 class Cache:
     def __init__(self, store='./', use_pickle=True):
-        self.store_file = os.path.join(store, f"cache.{'.pickle' if use_pickle else '.json'}")
+        self.store_file = os.path.join(store, f"cache{'.pickle' if use_pickle else '.json'}")
         self.module = pickle if use_pickle else json
         self.load()
 
