@@ -98,7 +98,7 @@ class PVGIS:
             return json.load(fp)
     
     def to_storage(self, data_key, data):
-        with open(os.path.join(self.outputs_storage, data_key['outputs']+'.json'), 'w') as fp:
+        with open(os.path.join(self.outputs_storage, data_key['outputs'].iloc[0]+'.json'), 'w') as fp:
             json.dump(data, fp)
         self.inputs = pd.concat([self.inputs, data_key], ignore_index=True)
         self.inputs.to_csv(self.inputs_storage, sep=';', index=False)    
@@ -122,7 +122,7 @@ class PVGIS:
                                  endyear=datayear,
                                  datatype=datatype)
             if save_if_none:
-                data_key = json_normalize(pv_raw_data['inputs']).iloc[0]
+                data_key = json_normalize(pv_raw_data['inputs'])
                 data_key['outputs'] = uuid.uuid4().hex
                 data_key['data.year'] = datayear       
                 data_key['data.type'] = datatype
