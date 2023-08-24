@@ -19,7 +19,7 @@ def _timestamp(x):
 def _datetime(x):
     return datetime.datetime.strptime(x, "%Y%m%d:%H%M")
 
-def _serie(x, datatype='hourly', name='pv'):
+def _serie(x, datatype='hourly', name='production'):
     v = [(_datetime(i['time']), i['P']) for i in x[datatype]]
     v = pd.DataFrame(v).rename(columns={0:'timestamp', 1:name})
     v['timestamp'] = pd.DatetimeIndex(v['timestamp'])
