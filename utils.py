@@ -3,7 +3,7 @@ import pandas as pd, numpy as np
 from pandas import json_normalize
 
 def is_empty(x):
-    if isinstance(x, (list, dict, str, pd.DataFrame)):
+    if isinstance(x, (list, dict, str, pd.DataFrame, pd.Series)):
         return len(x) == 0
     return pd.isna(x)
 
@@ -84,28 +84,76 @@ def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.7
       filtered = filtered.sort_values(by='data.timestamp', ascending=False)
       with open(os.path.join(outputs_store, filtered.iloc[0]['outputs']), 'r') as infile:
             return _serie(json.load(infile), datatype=datatype)      
+
+
+class PVGIS:
+    def __init__(self, storage='./'):
+        self.inputs_storage = os.path.join(storage, 'pv_inputs.csv')
+        self.outputs_storage = os.path.join(storage, 'pv_outputs')
+        os.makedirs(self.outputs_storage, exist_ok=True)
+        self.inputs = pd.read_csv(self.inputs_storage, sep=';') if os.path.exists(self.inputs_storage) else None
+        
+    def from_storage(self, data_key):
+        with open(os.path.join(self.outputs_storage, data_key['outputs']+'.json'), 'r') as fp:
+            return json.load(fp)
+    
+    def to_storage(self, data_key, data):
+        with open(os.path.join(self.outputs_store, data_key['outputs']+'.json'), 'w') as fp:
+            json.dump(data, fp)
+        self.inputs = pd.concat([self.inputs, data_key], ignore_index=True)
+        self.inputs.to_csv(self.inputs_storage, sep=';', index=False)    
+    
+    def get_nominal_pv(self, angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.738, datayear=2016, datatype='hourly', request_if_none=True, save_if_none=True):
+        # Watt per 1 kWp {"P": {"description": "PV system power", "units": "W"}
+        filtered = self.inputs.query(
+                f"`location.latitude` == {lat} & `location.longitude` == {lon} & "+\
+                f"`data.type` == '{datatype}' & `data.year` == {datayear} & "+\
+                f"`mounting_system.fixed.slope.value` == {angle} & "+\
+                f"`mounting_system.fixed.azimuth.value` == {aspect} & "+\
+                f"`pv_module.technology` == '{pvtech}' & `pv_module.system_loss` == {loss}") if not is_empty(self.inputs) else None
+        if is_empty(filtered) and request_if_none:
+            pv_raw_data = request_PVGIS(angle=angle,
+                                 aspect=aspect,
+                                 pvtechchoice=pvtech,
+                                 loss=loss,
+                                 lat=lat,
+                                 lon=lon,
+                                 startyear=datayear,
+                                 endyear=datayear,
+                                 datatype=datatype)
+            if save_if_none:
+                data_key = json_normalize(pv_raw_data['inputs'])
+                data_key['outputs'] = uuid.uuid4().hex
+                data_key['data.year'] = datayear       
+                data_key['data.type'] = datatype
+                data_key['data.timestamp'] = time.time()
+                self.to_storage(data_key, pv_raw_data['outputs'])
+            return _serie(pv_raw_data['outputs'], datatype=datatype)
+        else:
+            # filtered = filtered.sort_values(by='data.timestamp', ascending=False)
+            return _serie(self.from_storage(filtered.iloc[0]), datatype=datatype)      
         
 class Cache:
-    def __init__(self, store='./', use_pickle=True):
-        self.store_file = os.path.join(store, f"cache{'.pickle' if use_pickle else '.json'}")
+    def __init__(self, storage='./', use_pickle=True):
+        self.storage_file = os.path.join(storage, f"cache{'.pickle' if use_pickle else '.json'}")
         self.module = pickle if use_pickle else json
         self.load()
 
     def load(self):
-        if os.path.exists(self.store_file):
-            with open(self.store_file, 'rb') as fp:
-                self.store = self.module.load(fp)
+        if os.path.exists(self.storage_file):
+            with open(self.storage_file, 'rb') as fp:
+                self.storage = self.module.load(fp)
         else:
-            self.store = {}
+            self.storage = {}
         
     def save(self):
-        with open(self.store_file, 'wb') as fp:
-            self.module.dump(self.store, fp, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(self.storage_file, 'wb') as fp:
+            self.module.dump(self.storage, fp, protocol=pickle.HIGHEST_PROTOCOL)
             
     def get_cached_solution(self, key, calc_if_none_method=None):
-        if key in self.store:
-            return self.store[key]
+        if key in self.storage:
+            return self.storage[key]
         elif calc_if_none_method:
-            self.store[key] = calc_if_none_method()
-            return self.store[key]
+            self.storage[key] = calc_if_none_method()
+            return self.storage[key]
         
