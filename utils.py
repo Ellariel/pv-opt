@@ -98,7 +98,7 @@ class PVGIS:
             return json.load(fp)
     
     def to_storage(self, data_key, data):
-        with open(os.path.join(self.outputs_store, data_key['outputs']+'.json'), 'w') as fp:
+        with open(os.path.join(self.outputs_storage, data_key['outputs']+'.json'), 'w') as fp:
             json.dump(data, fp)
         self.inputs = pd.concat([self.inputs, data_key], ignore_index=True)
         self.inputs.to_csv(self.inputs_storage, sep=';', index=False)    
