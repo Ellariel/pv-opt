@@ -122,7 +122,7 @@ class PVGIS:
                                  endyear=datayear,
                                  datatype=datatype)
             if save_if_none:
-                data_key = json_normalize(pv_raw_data['inputs'])
+                data_key = json_normalize(pv_raw_data['inputs']).iloc[0]
                 data_key['outputs'] = uuid.uuid4().hex
                 data_key['data.year'] = datayear       
                 data_key['data.type'] = datatype
