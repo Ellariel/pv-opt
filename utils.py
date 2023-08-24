@@ -1,4 +1,4 @@
-import json, time, requests, uuid, os, datetime, jsonpickle
+import json, time, requests, uuid, os, datetime, jsonpickle, pickle
 import pandas as pd, numpy as np
 from pandas import json_normalize
 
@@ -84,3 +84,28 @@ def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.7
       filtered = filtered.sort_values(by='data.timestamp', ascending=False)
       with open(os.path.join(outputs_store, filtered.iloc[0]['outputs']), 'r') as infile:
             return _serie(json.load(infile), datatype=datatype)      
+        
+class Cache:
+    def __init__(self, store='./', use_pickle=True):
+        self.store_file = os.path.join(store, f"cache.{'.pickle' if use_pickle else '.json'}")
+        self.module = pickle if use_pickle else json
+        self.load()
+
+    def load(self):
+        if os.path.exists(self.store_file):
+            with open(self.store_file, 'rb') as fp:
+                self.store = self.module.load(fp)
+        else:
+            self.store = {}
+        
+    def save(self):
+        with open(self.store_file, 'wb') as fp:
+            self.module.dump(self.store, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            
+    def get_cached_solution(self, key, calc_if_none_method=None):
+        if key in self.store:
+            return self.store[key]
+        elif calc_if_none_method:
+            self.store[key] = calc_if_none_method()
+            return self.store[key]
+        
