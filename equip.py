@@ -64,19 +64,26 @@ class Building:
         self._production = None
         self._consumption = None
         self._total_renting_costs = None
+        self._total_battery_costs = None
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         
     def get_total_renting_costs(self):
-        if self._total_renting_costs == None:
-            self._total_renting_costs = 0
-            for loc in self._locations:
-                total_sq = 0
-                for eq in loc.equipment:
-                    total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
-                self._total_renting_costs += total_sq * loc.price_per_sqm              
-        return self._total_renting_costs        
+        self._total_renting_costs = 0
+        for loc in self._locations:
+            total_sq = 0
+            for eq in loc.equipment:
+                total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
+            self._total_renting_costs += total_sq * loc.price_per_sqm              
+        return self._total_renting_costs     
+    
+    def get_total_battery_costs(self):   
+        self._total_battery_costs = 0
+        for loc in self._locations:
+            for eq in loc.equipment:
+                self._total_battery_costs += eq.total_battery_costs           
+        return self._total_battery_costs
 
     def get_total_energy_storage_needed(self):
         if self._total_energy_storage_needed == None:
@@ -118,7 +125,6 @@ class Building:
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         self.get_production()
-        self.get_total_renting_costs()
         self.get_total_solar_energy_consumption()
         self.get_total_solar_energy_underproduction()     
         self.get_total_energy_storage_needed()   
@@ -127,12 +133,12 @@ class Building:
     production = property(fget=get_production) # {"P": {"description": "PV system power", "units": "W"}
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
+    total_battery_costs = property(fget=get_total_battery_costs)
     total_energy_storage_needed = property(fget=get_total_energy_storage_needed)
     total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
 
 def _calc_equipment_production(loc, eq):
-    #nominal_pv = utils.get_nominal_pv(angle=loc.angle,
     nominal_pv = pv_gis.get_nominal_pv(angle=loc.angle, # Watt per 1 kWp
                              aspect=loc.aspect, 
                              pvtech=eq.type, 
@@ -140,7 +146,7 @@ def _calc_equipment_production(loc, eq):
                              lat=loc.lat, 
                              lon=loc.lon,)
     production = nominal_pv * (eq.pv_watt_peak / 1000) * eq.pv_count
-    return production#.rename(columns={'pv' : 'production'})
+    return production
 
 def _calc_location_production(loc):
     pv = 0
