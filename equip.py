@@ -9,7 +9,40 @@ pv_gis = utils.PVGIS()
 # https://www.youtube.com/watch?v=Oriqr7K9kAc&ab_channel=%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B9%D1%84%D0%BE%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84
 # потребление - 1 кВт 8 часов в сутки
 # аккумулятор - 12 В х 60 Ah = 720 Втч * 0,7 = 504 Втч - полчас
-        
+Battery = dict(
+        uuid = None,
+        battery_count = 1,
+        type = 'LiFePO4',
+        battery_capacity_Ah = 100,
+        battery_energy_Wh = 4800,
+        battery_voltage = 48,
+        battery_discharge_factor = 0.7,
+        battery_price_per_Wh = 9.738,
+)
+Equipment = dict(
+        uuid = None,
+        pv_count = 1,
+        type = 'CIS',
+        pv_size_mm = (2176, 1098),
+        pv_efficiency = 18,
+        pv_watt_peak = 500,
+        pv_price_per_Wp = 0.90,
+        pv_loss = 14,
+        pv_voltage = 48,
+        #_battery = [],
+        #_total_battery_costs = None, 
+)
+Location = dict(
+        uuid = None,
+        angle = 0,
+        aspect = 0,
+        size_m = (10, 10),
+        price_per_sqm = 1,
+        lat = 52.373,
+        lon = 9.738,
+        _equipment = []
+)
+'''        
 class Battery:
     def __init__(self):
         self.uuid = None
@@ -53,14 +86,20 @@ class Location:
         self.lat = 52.373
         self.lon = 9.738
         self.equipment = equipment
-        
+'''        
 class Building:
-    def __init__(self, locations=[]):
-        self.uuid = None
-        self.address = 'Hannover'
-        self.lat = 52.373
-        self.lon = 9.738
+    def __init__(self, uuid=None, 
+                       address='Hannover',
+                       lat=52.373,
+                       lon=9.738,
+                       locations=[],
+                       batteries=[]):
+        self.uuid = uuid
+        self.address = address
+        self.lat = lat
+        self.lon = lon
         self._locations = locations
+        self._battery = batteries
         self._production = None
         self._consumption = None
         self._total_renting_costs = None
@@ -69,20 +108,34 @@ class Building:
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         
-    def get_total_renting_costs(self):
-        self._total_renting_costs = 0
+    def _erase_equipment(self, keep_consumption=True):
+        self._battery = []
         for loc in self._locations:
-            total_sq = 0
-            for eq in loc.equipment:
-                total_sq += (eq.pv_size_mm[0] / 1000) * (eq.pv_size_mm[1] / 1000) * eq.pv_count
-            self._total_renting_costs += total_sq * loc.price_per_sqm              
+            loc['_equipment'] = []
+        self._production = None
+        if not keep_consumption:
+            self._consumption = None
+        self._total_renting_costs = None
+        self._total_battery_costs = None
+        self._total_energy_storage_needed = None
+        self._total_solar_energy_consumption = None
+        self._total_solar_energy_underproduction = None
+        
+    def get_total_renting_costs(self):
+        if self._total_renting_costs == None:
+            self._total_renting_costs = 0
+            for loc in self._locations:
+                total_sq = 0
+                for eq in loc['_equipment']:
+                    total_sq += (eq['pv_size_mm'][0] / 1000) * (eq['pv_size_mm'][1] / 1000) * eq['pv_count']
+                self._total_renting_costs += total_sq * loc['price_per_sqm']              
         return self._total_renting_costs     
     
     def get_total_battery_costs(self):   
-        self._total_battery_costs = 0
-        for loc in self._locations:
-            for eq in loc.equipment:
-                self._total_battery_costs += eq.total_battery_costs           
+        if self._total_battery_costs == None:
+            self._total_battery_costs = 0
+            for bt in self._battery:
+                self._total_battery_costs += _calc_battery_costs(bt)          
         return self._total_battery_costs
 
     def get_total_energy_storage_needed(self):
@@ -110,16 +163,18 @@ class Building:
             self._consumption = _mook_building_consumption(self)
         return self._consumption
     
-    def set_locations(self, value):
-        if self._locations != value:
-            self._locations = value
-            self.updated()
+    #def set_locations(self, value):
+    #    self._locations = value
+        #if self._locations != value:
+        #    self._locations = value
+        #    self.updated()
             
-    def get_locations(self):
-        return self._locations
+    #def get_locations(self):
+    #    return self._locations
     
     def updated(self):
         self._production = None
+        self._total_battery_costs = None
         self._total_renting_costs = None
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
@@ -128,8 +183,10 @@ class Building:
         self.get_total_solar_energy_consumption()
         self.get_total_solar_energy_underproduction()     
         self.get_total_energy_storage_needed()   
+        self.get_total_renting_costs()
+        self.get_total_battery_costs()
     
-    locations = property(fget=get_locations, fset=set_locations)
+    #locations = property(fget=get_locations, fset=set_locations)
     production = property(fget=get_production) # {"P": {"description": "PV system power", "units": "W"}
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
@@ -139,24 +196,24 @@ class Building:
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
 
 def _calc_equipment_production(loc, eq):
-    nominal_pv = pv_gis.get_nominal_pv(angle=loc.angle, # Watt per 1 kWp
-                             aspect=loc.aspect, 
-                             pvtech=eq.type, 
-                             loss=eq.pv_loss, 
-                             lat=loc.lat, 
-                             lon=loc.lon,)
-    production = nominal_pv * (eq.pv_watt_peak / 1000) * eq.pv_count
+    nominal_pv = pv_gis.get_nominal_pv(angle=loc['angle'], # Watt per 1 kWp
+                             aspect=loc['aspect'], 
+                             pvtech=eq['type'], 
+                             loss=eq['pv_loss'], 
+                             lat=loc['lat'], 
+                             lon=loc['lon'],)
+    production = nominal_pv * (eq['pv_watt_peak'] / 1000) * eq['pv_count']
     return production
 
 def _calc_location_production(loc):
     pv = 0
-    for eq in loc.equipment:
+    for eq in loc['_equipment']:
       pv = pv + _calc_equipment_production(loc, eq)
     return pv
 
 def _calc_building_production(b):
     pv = 0
-    for loc in b.locations:
+    for loc in b._locations:
       pv = pv + _calc_location_production(loc)
     return pv
 
@@ -176,6 +233,6 @@ def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
     return peak_daily_consumption * autonomy_period_days
 
 def _calc_battery_costs(bt):
-    return bt.battery_energy_Wh * bt.battery_price_per_Wh * bt.battery_count
+    return bt['battery_energy_Wh'] * bt['battery_price_per_Wh'] * bt['battery_count']
 
 
