@@ -73,36 +73,37 @@ if __name__ == "__main__":
             b._locations.append(loc)
         b.updated(update_production=False)
         buildings.append(b)
-        print_building(b)
-        
-    building = buildings[0]
-    building._erase_equipment()
 
-    print('solving...')
-    start_time = time.time()
-    solver = ConstraintSolver(building, components)
-    solutions = solver.get_solutions()   
-    print(f' solving time: {time.time() - start_time}')
+    for building in buildings:
+        print_building(building)
+        building._erase_equipment()
+        print('solving...')
+        start_time = time.time()
+        solver = ConstraintSolver(building, components)
+        solutions = solver.get_solutions()   
+        print(f' solving time: {time.time() - start_time}')
     
-    print(f' top-5 solutions:')
-    for s in solutions[:5]:
-        print(' ', s, 'cost:', solver.calc_solution_costs(s))
+        print(f' top-5 solutions:')
+        for s in solutions[:5]:
+            print(' ', s, 'cost:', solver.calc_solution_costs(s))
 
-    print('''  A - location, B - equipment, C - equipment count, D - battery, E - battery count''')
-    print(f"optimal solution: {solutions[0]}")
+        print('''  A - location, B - equipment, C - equipment count, D - battery, E - battery count''')
+        print(f"optimal solution: {solutions[0]}")
+        #solutions[0]['C'] = 1
+        _update_building(building, components, solutions[0])
+        print('saving...')
+        solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
+        print_building(building)  
     
-    #solutions[0]['C'] = 1
+    solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
     
-    _update_building(building, components, solutions[0])
-    print_building(building)
     
-    print('!!!!')
-    #solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
-    #solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
+    
+    
+    
     #print(solution_data)
-    solution, building_solved = solver.load_solution(solution_data, building, storage=solution_dir)
-    print(solution)
-    print_building(building_solved)  
+    #solution, building_solved = solver.load_solution(solution_data, building, storage=solution_dir)
+    #print(solution)
     
        
     #with open(os.path.join(base_dir, 'building.pickle'), 'wb') as fp:
