@@ -1,0 +1,3 @@
+uuid;pv_count;type;pv_size_mm;pv_efficiency;pv_watt_peak;pv_price_per_Wp;pv_loss;pv_voltage
+1;1;CIS;(2176, 1098);18;500;0.9;14;48
+2;1;CIS;(6528, 3294);18;500;0.9;14;48

@@ -47,45 +47,6 @@ def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss
         r.raise_for_status()
     return r.json()
 
-def get_nominal_pv(angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.738, datayear=2016, request_if_none=True, datatype='hourly', store='./'):
-    # Watt per 1 kWp
-    # {"P": {"description": "PV system power", "units": "W"}
-    inputs_store = os.path.join(store, 'pv_inputs.csv')
-    outputs_store = os.path.join(store, 'pv_outputs')
-    os.makedirs(outputs_store, exist_ok=True)
-    inputs = pd.read_csv(inputs_store, sep=';') if os.path.exists(inputs_store) else None
-    filtered = inputs.query(
-                f"`location.latitude` == {lat} & `location.longitude` == {lon} & "+\
-                f"`data.type` == '{datatype}' & `data.year` == {datayear} & "+\
-                f"`mounting_system.fixed.slope.value` == {angle} & "+\
-                f"`mounting_system.fixed.azimuth.value` == {aspect} & "+\
-                f"`pv_module.technology` == '{pvtech}' & `pv_module.system_loss` == {loss}") if not is_empty(inputs) else None
-    if is_empty(filtered) and request_if_none:
-        pv_raw_data = request_PVGIS(angle=angle,
-                                 aspect=aspect,
-                                 pvtechchoice=pvtech,
-                                 loss=loss,
-                                 lat=lat,
-                                 lon=lon,
-                                 startyear=datayear,
-                                 endyear=datayear,
-                                 datatype=datatype)
-        data_key = json_normalize(pv_raw_data['inputs'])
-        file_name = uuid.uuid4().hex + '.json'
-        data_key['outputs'] = file_name
-        data_key['data.year'] = datayear       
-        data_key['data.type'] = datatype
-        data_key['data.timestamp'] = time.time()
-        with open(os.path.join(outputs_store, file_name), 'w') as outfile:
-            json.dump(pv_raw_data['outputs'], outfile)
-        pd.concat([inputs, data_key], ignore_index=True).to_csv(inputs_store, sep=';', index=False)
-        return _serie(pv_raw_data['outputs'], datatype=datatype)
-    else:
-      filtered = filtered.sort_values(by='data.timestamp', ascending=False)
-      with open(os.path.join(outputs_store, filtered.iloc[0]['outputs']), 'r') as infile:
-            return _serie(json.load(infile), datatype=datatype)      
-
-
 class PVGIS:
     def __init__(self, storage='./'):
         self.inputs_storage = os.path.join(storage, 'pv_inputs.csv')
@@ -141,13 +102,13 @@ class Cache:
 
     def load(self):
         if os.path.exists(self.storage_file):
-            with open(self.storage_file, 'rb') as fp:
+            with open(self.storage_file, 'r' if '.json' in self.storage_file else 'rb') as fp:
                 self.storage = self.module.load(fp)
         else:
             self.storage = {}
         
     def save(self):
-        with open(self.storage_file, 'wb') as fp:
+        with open(self.storage_file, 'w' if '.json' in self.storage_file else 'wb') as fp:
             self.module.dump(self.storage, fp, protocol=pickle.HIGHEST_PROTOCOL)
             
     def get_cached_solution(self, key, calc_if_none_method=None):

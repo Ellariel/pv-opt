@@ -5,36 +5,76 @@ from ast import literal_eval
 
 import equip
 from equip import Building, Equipment, Location, Battery
-from model import ConstraintSolver, total_building_energy_costs, _update_building
+from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 base_dir = './'
+consumption_dir = os.path.join(base_dir, 'consumption')
+production_dir = os.path.join(base_dir, 'production')
+solution_dir = os.path.join(base_dir, 'solution')
+os.makedirs(consumption_dir, exist_ok=True)
+os.makedirs(production_dir, exist_ok=True)
+os.makedirs(solution_dir, exist_ok=True)
+
+def print_building(building):
+    print(f'building {building.uuid}:')
+    print(f" total_production: {building.production['production'].sum():.1f}")
+    print(f" total_consumption: {building.consumption['consumption'].sum():.1f}")
+    print(f" total_solar_energy_underproduction: {building.total_solar_energy_underproduction:.1f}")
+    print(f" total_building_energy_costs: {total_building_energy_costs(building):.1f}")
+    print(f" locations_involved: {len(building._locations)}")
+    print(f" total_renting_costs: {building.total_renting_costs:.1f}")
+    print(f" equipment_units_used: {sum([eq['pv_count'] for loc in building._locations for eq in loc['_equipment']])}")
+    print(f" total_equipment_costs: {building.total_equipment_costs:.1f}")
+    print(f" baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}")
+    print(f" total_battery_costs: {building.total_battery_costs:.1f}")
 
 if __name__ == "__main__":
-    
+        
     components = {}
     print(f'base_dir: {base_dir}')
-    location = pd.read_csv(os.path.join(base_dir, 'location.csv'), sep=';', converters={'size_m': literal_eval})
-    location.index = range(1, len(location)+1)
-    components['location'] = location.to_dict(orient='index')
-    del location
+    location_data = pd.read_csv(os.path.join(base_dir, 'location.csv'), sep=';', converters={'size_m': literal_eval})
+    location_data.index = range(1, len(location_data)+1)
+    components['location'] = location_data.to_dict(orient='index')
+
+    equipment_data = pd.read_csv(os.path.join(base_dir, 'equipment.csv'), sep=';', converters={'pv_size_mm': literal_eval})
+    equipment_data.index = range(1, len(equipment_data)+1)
+    components['equipment'] = equipment_data.to_dict(orient='index')
+    del equipment_data
     
-    equipment = pd.read_csv(os.path.join(base_dir, 'equipment.csv'), sep=';', converters={'pv_size_mm': literal_eval})
-    equipment.index = range(1, len(equipment)+1)
-    components['equipment'] = equipment.to_dict(orient='index')
-    del equipment
+    battery_data = pd.read_csv(os.path.join(base_dir, 'battery.csv'), sep=';')
+    battery_data.index = range(1, len(battery_data)+1)
+    components['battery'] = battery_data.to_dict(orient='index')
+    del battery_data
     
-    battery = pd.read_csv(os.path.join(base_dir, 'battery.csv'), sep=';')
-    battery.index = range(1, len(battery)+1)
-    components['battery'] = battery.to_dict(orient='index')
-    del battery
+    building_data = pd.read_csv(os.path.join(base_dir, 'building.csv'), sep=';')
+    building_data.index = range(1, len(building_data)+1)
     
+    consumption_data = pd.read_csv(os.path.join(base_dir, 'consumption.csv'), sep=';')
+    consumption_data.index = range(1, len(consumption_data)+1)
+    
+    production_data = pd.read_csv(os.path.join(base_dir, 'production.csv'), sep=';')
+    production_data.index = range(1, len(production_data)+1)
+    
+    solution_data = pd.read_csv(os.path.join(base_dir, 'solution.csv'), sep=';', converters={'solution': literal_eval})
+    solution_data.index = range(1, len(solution_data)+1)  
+    print('data loading:')  
+    print(f" locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
+    print(f" buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
+    print(f" stored solutions: {len(solution_data)}")
+
     buildings = []
-    if os.path.exists(os.path.join(base_dir, 'building.pickle')): 
-        with open(os.path.join(base_dir, 'building.pickle'), 'rb') as fp:
-            buildings = pickle.load(fp)
-    
-    print(f"locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}, buildings: {len(buildings)}")    
-    
+    for idx, item in building_data.iterrows():
+        b = Building(**item.to_dict())
+        b.load_production(production_data, storage=production_dir)
+        b.load_consumption(consumption_data, storage=consumption_dir)
+        for idx, item in location_data[location_data['building'] == b.uuid].iterrows():
+            loc = Location.copy()
+            loc.update(item.to_dict())
+            b._locations.append(loc)
+        b.updated(update_production=False)
+        buildings.append(b)
+        print_building(b)
+        
     building = buildings[0]
     building._erase_equipment()
 
@@ -42,29 +82,31 @@ if __name__ == "__main__":
     start_time = time.time()
     solver = ConstraintSolver(building, components)
     solutions = solver.get_solutions()   
-    print(f'solving time: {time.time() - start_time}')
+    print(f' solving time: {time.time() - start_time}')
     
-    print(f'top-5 solutions:')
+    print(f' top-5 solutions:')
     for s in solutions[:5]:
-        print(s, 'cost:', solver.calc_solution_costs(s))
+        print(' ', s, 'cost:', solver.calc_solution_costs(s))
 
-    print('''A - location, B - equipment, C - equipment count, D - battery, E - battery count''')
-    #print()
+    print('''  A - location, B - equipment, C - equipment count, D - battery, E - battery count''')
     print(f"optimal solution: {solutions[0]}")
     
     #solutions[0]['C'] = 1
     
     _update_building(building, components, solutions[0])
-    print(f"total_production: {building.production['production'].sum():.1f}")
-    print(f"total_consumption: {building.consumption['consumption'].sum():.1f}")
-    print(f"total_solar_energy_underproduction: {building.total_solar_energy_underproduction:.1f}")
-    print(f"total_building_energy_costs: {total_building_energy_costs(building):.1f}")
-    print(f"locations_involved: {len(building._locations)}")
-    print(f"total_renting_costs: {building.total_renting_costs:.1f}")
-    print(f"total_battery_costs: {building.total_battery_costs:.1f}")
+    print_building(building)
+    
+    print('!!!!')
+    #solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
+    #solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
+    #print(solution_data)
+    solution, building_solved = solver.load_solution(solution_data, building, storage=solution_dir)
+    print(solution)
+    print_building(building_solved)  
+    
        
-    with open(os.path.join(base_dir, 'building.pickle'), 'wb') as fp:
-        pickle.dump(buildings, fp)
+    #with open(os.path.join(base_dir, 'building.pickle'), 'wb') as fp:
+    #    pickle.dump(buildings, fp)
     
     #print()
     #print('locations', ppretty(building._locations, show_protected=False, show_static=True, show_properties=True))
@@ -75,6 +117,35 @@ if __name__ == "__main__":
     #print(type(location['size_m'].iloc[0]))
 
     #sys.exit(0)
+    
+            
+
+
+
+    #sys.exit()
+    #buildings = []
+    #if os.path.exists(os.path.join(base_dir, 'building.pickle')): 
+    #    with open(os.path.join(base_dir, 'building.pickle'), 'rb') as fp:
+    #        buildings = pickle.load(fp)
+    
+       
+    
+    #
+    #building.uuid = 1
+    
+    #production = building.save_production(production, building=1, storage=production_dir)
+    #production.to_csv(os.path.join(base_dir, 'production.csv'), index=False, sep=';')  
+    #print(production)
+    #p = building.load_production(production, storage=production_dir)
+    #print(p)
+    
+    #consumption = building.save_consumption(consumption, building=1, storage=consumption_dir)
+    #consumption.to_csv(os.path.join(base_dir, 'consumption.csv'), index=False, sep=';')  
+    #print(consumption)
+    #c = building.load_consumption(consumption, storage=consumption_dir)
+    #print(c)
+    
+    #sys.exit()
 
     '''
     print(components)

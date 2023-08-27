@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-import json, random, math
+from uuid import uuid4
+import json, random, math, os, pickle, time
 import utils
 
 pv_gis = utils.PVGIS()
@@ -29,8 +30,6 @@ Equipment = dict(
         pv_price_per_Wp = 0.90,
         pv_loss = 14,
         pv_voltage = 48,
-        #_battery = [],
-        #_total_battery_costs = None, 
 )
 Location = dict(
         uuid = None,
@@ -42,59 +41,31 @@ Location = dict(
         lon = 9.738,
         _equipment = []
 )
-'''        
-class Battery:
-    def __init__(self):
-        self.uuid = None
-        self.type = 'LiFePO4'
-        self.battery_count = 1
-        self.battery_capacity_Ah = 100
-        self.battery_energy_Wh = 4800
-        self.battery_voltage = 48
-        self.battery_discharge_factor = 0.7
-        self.battery_price_per_Wh = 9.738 
+Production = dict(
+        uuid = None,
+        timestamp = 1692989661.8293242,
+        year = 2022,
+        building = 1,
+        production = '5c75deb8d33045cd86bb3ee9b7e98c25'
+)
+Consumption = dict(
+        uuid = None,
+        timestamp = 1692989661.8293242,
+        year = 2022,
+        building = 1,
+        consumption = '5c75deb8d33045cd86bb3ee9b7e98c25'
+)
 
-class Equipment:
-    def __init__(self, battery=[]):
-        self.uuid = None
-        self.type = 'CIS'
-        self.pv_count = 1
-        self.pv_size_mm = (2176, 1098)
-        self.pv_efficiency = 18
-        self.pv_watt_peak = 500
-        self.pv_price_per_Wp = 0.90
-        self.pv_loss = 14
-        self.pv_voltage = 48
-        self.battery = battery
-        self._total_battery_costs = None   
-        
-    def get_total_battery_costs(self):
-        self._total_battery_costs = 0
-        for bt in self.battery:
-            self._total_battery_costs += _calc_battery_costs(bt)          
-        return self._total_battery_costs   
-    
-    total_battery_costs = property(fget=get_total_battery_costs)
-
-class Location:
-    def __init__(self, equipment=[]):
-        self.uuid = None
-        self.angle = 0
-        self.aspect = 0
-        self.size_m = (10, 10)
-        self.price_per_sqm = 1
-        self.lat = 52.373
-        self.lon = 9.738
-        self.equipment = equipment
-'''        
 class Building:
     def __init__(self, uuid=None, 
+                       name='noname',
                        address='Hannover',
                        lat=52.373,
                        lon=9.738,
                        locations=[],
                        batteries=[]):
         self.uuid = uuid
+        self.name = name
         self.address = address
         self.lat = lat
         self.lon = lon
@@ -104,6 +75,7 @@ class Building:
         self._consumption = None
         self._total_renting_costs = None
         self._total_battery_costs = None
+        self._total_equipment_costs = None
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
@@ -117,9 +89,70 @@ class Building:
             self._consumption = None
         self._total_renting_costs = None
         self._total_battery_costs = None
+        self._total_equipment_costs = None
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
+
+    def from_storage(self, data_key, storage='./'):
+        file_name = os.path.join(storage, data_key)
+        if os.path.exists(file_name+'.json'):
+            with open(file_name+'.json', 'r') as fp:
+                return pd.read_json(json.load(fp))
+        elif os.path.exists(file_name+'.pickle'):
+            with open(file_name+'.pickle', 'rb') as fp:
+                return pickle.load(fp)        
+
+    def to_storage(self, data_key, data, storage='./', use_pickle=False):
+        file_name = os.path.join(storage, data_key)
+        if use_pickle:
+            with open(file_name+'.pickle', 'wb') as fp:
+                pickle.dump(data, fp)
+        else:     
+            with open(file_name+'.json', 'w') as fp:
+                json.dump(data.to_json(), fp)
+
+    def load_production(self, production_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
+        query = f"`building` == {self.uuid if building == None else building}"
+        query += f" & `uuid` == {uuid}" if uuid != None else ''
+        query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
+        query += f" & `year` == {year}" if year != None else ''
+        filtered = production_data.query(query)
+        if not utils.is_empty(filtered):
+            filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
+            self._production = self.from_storage(filtered.iloc[0]['production'], storage=storage)
+            return self._production
+                
+    def save_production(self, production_data, building=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
+        data_key = Production.copy()
+        data_key['uuid'] = uuid if uuid != None else uuid4().hex
+        data_key['production'] = uuid4().hex
+        data_key['building'] = self.uuid if building == None else building
+        data_key['timestamp'] = timestamp if timestamp != None else time.time()
+        data_key['year'] = year if year != None else self._production.index[0].year
+        self.to_storage(data_key['production'], self._production, storage=storage, use_pickle=use_pickle)
+        return pd.concat([production_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
+    
+    def load_consumption(self, consumption_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
+        query = f"`building` == {self.uuid if building == None else building}"
+        query += f" & `uuid` == {uuid}" if uuid != None else ''
+        query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
+        query += f" & `year` == {year}" if year != None else ''
+        filtered = consumption_data.query(query)
+        if not utils.is_empty(filtered):
+            filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
+            self._consumption = self.from_storage(filtered.iloc[0]['consumption'], storage=storage)
+            return self._consumption
+                
+    def save_consumption(self, consumption_data, building=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
+        data_key = Consumption.copy()
+        data_key['uuid'] = uuid if uuid != None else uuid4().hex
+        data_key['consumption'] = uuid4().hex
+        data_key['building'] = self.uuid if building == None else building
+        data_key['timestamp'] = timestamp if timestamp != None else time.time()
+        data_key['year'] = year if year != None else self._consumption.index[0].year
+        self.to_storage(data_key['consumption'], self._consumption, storage=storage, use_pickle=use_pickle)
+        return pd.concat([consumption_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
         
     def get_total_renting_costs(self):
         if self._total_renting_costs == None:
@@ -137,6 +170,14 @@ class Building:
             for bt in self._battery:
                 self._total_battery_costs += _calc_battery_costs(bt)          
         return self._total_battery_costs
+    
+    def get_total_equipment_costs(self):   
+        if self._total_equipment_costs == None:
+            self._total_equipment_costs = 0
+            for loc in self._locations:
+                for eq in loc['_equipment']:
+                    self._total_equipment_costs += _calc_equipment_costs(eq)          
+        return self._total_equipment_costs
 
     def get_total_energy_storage_needed(self):
         if self._total_energy_storage_needed == None:
@@ -163,34 +204,28 @@ class Building:
             self._consumption = _mook_building_consumption(self)
         return self._consumption
     
-    #def set_locations(self, value):
-    #    self._locations = value
-        #if self._locations != value:
-        #    self._locations = value
-        #    self.updated()
-            
-    #def get_locations(self):
-    #    return self._locations
-    
-    def updated(self):
-        self._production = None
+    def updated(self, update_production=True):
+        if update_production:
+            self._production = None
         self._total_battery_costs = None
         self._total_renting_costs = None
+        self._total_equipment_costs = None
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
         self.get_production()
         self.get_total_solar_energy_consumption()
         self.get_total_solar_energy_underproduction()     
-        self.get_total_energy_storage_needed()   
+        self.get_total_energy_storage_needed() 
+        self.get_total_equipment_costs()  
         self.get_total_renting_costs()
         self.get_total_battery_costs()
     
-    #locations = property(fget=get_locations, fset=set_locations)
     production = property(fget=get_production) # {"P": {"description": "PV system power", "units": "W"}
     consumption = property(fget=get_consumption)
     total_renting_costs = property(fget=get_total_renting_costs)
     total_battery_costs = property(fget=get_total_battery_costs)
+    total_equipment_costs = property(fget=get_total_equipment_costs)
     total_energy_storage_needed = property(fget=get_total_energy_storage_needed)
     total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
@@ -235,4 +270,5 @@ def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
 def _calc_battery_costs(bt):
     return bt['battery_energy_Wh'] * bt['battery_price_per_Wh'] * bt['battery_count']
 
-
+def _calc_equipment_costs(eq):
+    return eq['pv_watt_peak'] * eq['pv_price_per_Wp'] * eq['pv_count']
