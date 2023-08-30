@@ -27,9 +27,12 @@ class CalculationThread(threading.Thread):
         self.started = True
         print(f"{self.thread_id} - is started")
         # Your exporting stuff goes here ...
-        for _ in range(11):
+        for _ in range(13):
             time.sleep(1) 
             self.progress += 10
+            if self.progress > 100:
+                self.progress = 0
+        self.progress = 100
         self.calculation_results[self.thread_id] = f"{self.thread_id} - is finished"
         self.finished = True
         print(f"{self.thread_id} - is finished")
@@ -38,29 +41,31 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
 app.config['SECRET_KEY'] = 'secret_key'
 app.config['UPLOAD_FOLDER'] = './uploaded'
-app.config['MAX_CONTENT_PATH'] = 1000000
+app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 calculation_threads = {}
 calculation_results = {}
 
-@app.route('/api/v1.0/upload_page')
-#@auth.login_required
-def upload_page():
-   return render_template('upload.html')
+files_types = ['consumption_file', 'production_file', 'building_file',
+               'location_file', 'equipment_file', 'battery_file']
 	
 @app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
 #@auth.login_required
-def upload_file():
-   if request.method == 'POST':
-      f = request.files['file']
-      f.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f.filename)))
-      return 'File uploaded successfully'
+def upload_files():
+    if request.method == 'POST':
+        for ft in files_types:
+            if ft in request.files:
+                f = request.files[ft]
+                if len(secure_filename(f.filename)):
+                    print(f.filename)
+                    f.save(os.path.join(app.config['UPLOAD_FOLDER'], ft.split('_')[0] + '.csv'))
+        return index_page(files_uploaded='\nFiles uploaded successfully!\n')
 
 @app.route('/')
 #@auth.login_required
-def index_page():  
-    return render_template('index.html')#, task_id=thread_id)
+def index_page(**args):  
+    return render_template('index.html', **args)
 
 @app.route('/api/v1.0/calculate')
 #@auth.login_required
@@ -72,7 +77,7 @@ def api_calculate():
             print(f"{thread_id} - is removed")
     thread_id = random.randint(0, 10000)
     calculation_threads[thread_id] = CalculationThread(thread_id, calculation_results)
-    return str(thread_id)
+    return {'task_id': thread_id, 'exception': ''}
 
 @app.route('/api/v1.0/results/<int:thread_id>')
 #@auth.login_required
@@ -81,9 +86,9 @@ def api_results(thread_id):
     print('results are requested')
     if thread_id in calculation_results:
         results = calculation_results[thread_id]
-        return str(results)
+        return jsonify({'task_id': thread_id, 'results': results, 'exception': ''})
     else:
-        return 'No results yet!'
+        return jsonify({'task_id': thread_id, 'results': '', 'exception': 'No results yet!'})
     
 @app.route('/api/v1.0/progress/<int:thread_id>')
 #@auth.login_required
@@ -93,9 +98,10 @@ def api_progress(thread_id):
         if not calculation_threads[thread_id].is_alive() and not calculation_threads[thread_id].started:
             calculation_threads[thread_id].start()
         progress = calculation_threads[thread_id].progress
-        return str(progress)
+        finished = calculation_threads[thread_id].finished
+        return jsonify({'task_id': thread_id, 'progress': progress, 'finished': finished, 'exception': ''})
     else:
-        return 'Wrong thread_id!'
+        return jsonify({'task_id': thread_id, 'exception': 'Wrong thread_id!'})
 
 #########################################################################
 

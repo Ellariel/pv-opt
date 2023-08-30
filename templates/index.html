@@ -1,23 +1,27 @@
 <html>
     <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script type = "text/javascript">
-            function sleep (time) {
+            function sleep(time) {
+            return new Promise((resolve) => setTimeout(resolve, time));
+            }
+            function submit() {
             return new Promise((resolve) => setTimeout(resolve, time));
             }
             function new_task() {
-                $.get('/api/v1.0/calculate', function(task_id) {
-                    //alert(task_id)
-                    document.getElementById('task_id').value = task_id;
-                    document.getElementById('task_dv').innerHTML = 'task_id = ' + task_id;
+                $.get('/api/v1.0/calculate', function(json_data) {
+                    req = JSON.parse(JSON.stringify(json_data));
+                    document.getElementById('task_id').value = req.task_id;
+                    document.getElementById('task_dv').innerHTML = 'task_id = ' + req.task_id;
                 })
             }
             function request_results(task_id) {
                 function _req() {
-                    $.get('/api/v1.0/results/' + task_id, function(results) {
-                        if (results.includes("!")) {
+                    $.get('/api/v1.0/results/' + task_id, function(json_data) {
+                        req = JSON.parse(JSON.stringify(json_data));
+                        if (req.results == "") {
                             setTimeout(_req, 1000);
                         } else {
-                            document.getElementById('results_text').value = results;
+                            document.getElementById('results_text').value += '\n' + req.results;
                         }
                     })
                 }
@@ -28,9 +32,10 @@
                 progress_bar = document.getElementById('progress');
                 progress_bar.value = 0;
                 function _req() {
-                    $.get('/api/v1.0/progress/' + task_id, function(progress) {
-                        progress_bar.value = progress;
-                        if (progress < 100) {
+                    $.get('/api/v1.0/progress/' + task_id, function(json_data) {
+                        req = JSON.parse(JSON.stringify(json_data));
+                        progress_bar.value = req.progress;
+                        if (!req.finished) {
                             setTimeout(_req, 1000);
                         } else {
                             document.getElementById('calc_button').disabled = false;
@@ -51,14 +56,14 @@
             }
 	</script>
     <body> 
-    <table border = "1">
-        <form action = "http://localhost:5000/api/v1.0/uploader" method = "POST" enctype = "multipart/form-data"></form>
+    <table border="1">
+        <form action = "http://localhost:5003/api/v1.0/upload" method = "POST" enctype = "multipart/form-data">
             <tr>
                 <td><div>consumption_file:  </td><td><input type = "file" name = "consumption_file" /><br /></div></td>
                 <td rowspan = "6">
-                    <textarea id = "results_text" rows = "15" cols = "40">Results will be here...</textarea>
+                    <textarea id = "results_text" rows = "15" cols = "35">{{ files_uploaded }}Results will be here...</textarea>
                     <input type = "hidden" value = "{{ task_id }}" id = "task_id"/><br />
-                    <progress id = "progress" max = "100" value = "0" style="width: 100%"></progress><br />
+                    <progress id = "progress" max = "100" value = "0" style = "width: 100%"></progress><br />
                 </td>
             <tr>
                 <td><div>production_file:   </td><td><input type = "file" name = "production_file" /><br /></div></td>
@@ -69,14 +74,15 @@
             <tr>
                 <td><div>equipment_file:    </td><td><input type = "file" name = "equipment_file" /><br /></div></td>
             <tr>
-                <td><div>baterry_file:      </td><td><input type = "file" name = "baterry_file" /><br /></div></td>
+                <td><div>battery_file:      </td><td><input type = "file" name = "battery_file" /><br /></div></td>
             <tr>
-                <td><input type="submit"/></td>
                 <td></td>
+                <td><div>&nbsp;</div>
+                    <button type = "submit" style = "width: 100%">upload</button></td>
                 <td><div id = "task_dv">task_id = {{ task_id }}</div>
-                    <input type = "button" onclick = "javascript:calculate();" value = "calculate" id = "calc_button"/>
+                    <button type = "button" onclick = "javascript:calculate();" id = "calc_button" style = "width: 100%">calculate</button>
                 </td>
-            </form> 
+        </form> 
     </table>
 
             
