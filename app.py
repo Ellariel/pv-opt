@@ -15,8 +15,9 @@ import threading
 import time
 
 class CalculationThread(threading.Thread):
-    def __init__(self, thread_id):
+    def __init__(self, thread_id, calculation_results):
         self.thread_id = thread_id
+        self.calculation_results = calculation_results
         self.progress = 0
         self.finished = False
         self.started = False
@@ -29,6 +30,7 @@ class CalculationThread(threading.Thread):
         for _ in range(11):
             time.sleep(1)
             self.progress += 10
+        self.calculation_results[self.thread_id] = f"{self.thread_id} - is finished"
         self.finished = True
         print(f"{self.thread_id} - is finished")
 
@@ -40,6 +42,67 @@ app.config['MAX_CONTENT_PATH'] = 1000000
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 calculation_threads = {}
+calculation_results = {}
+
+@app.route('/api/v1.0/upload_page')
+#@auth.login_required
+def upload_page():
+   return render_template('upload.html')
+	
+@app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
+#@auth.login_required
+def upload_file():
+   if request.method == 'POST':
+      f = request.files['file']
+      f.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f.filename)))
+      return 'File uploaded successfully'
+
+@app.route('/')
+#@auth.login_required
+def index_page():  
+    return render_template('index.html')#, task_id=thread_id)
+
+@app.route('/api/v1.0/calculate')
+#@auth.login_required
+def api_calculate():
+    global exporting_threads
+    for thread_id in list(calculation_threads.keys()):
+        if calculation_threads[thread_id].finished:
+            del calculation_threads[thread_id]
+            print(f"{thread_id} - is removed")
+    thread_id = random.randint(0, 10000)
+    calculation_threads[thread_id] = CalculationThread(thread_id, calculation_results)
+    return str(thread_id)
+
+@app.route('/api/v1.0/results/<int:thread_id>')
+#@auth.login_required
+def api_results(thread_id):
+    global calculation_results
+    print('results are requested')
+    if thread_id in calculation_results:
+        results = calculation_results[thread_id]
+        return str(results)
+    else:
+        return 'No results yet!'
+    
+@app.route('/api/v1.0/progress/<int:thread_id>')
+#@auth.login_required
+def api_progress(thread_id):
+    global calculation_threads
+    if thread_id in calculation_threads:
+        if not calculation_threads[thread_id].is_alive() and not calculation_threads[thread_id].started:
+            calculation_threads[thread_id].start()
+        progress = calculation_threads[thread_id].progress
+        return str(progress)
+    else:
+        return 'Wrong thread_id!'
+
+#########################################################################
+
+if __name__ == "__main__":
+    app.run(host='127.0.0.1', port=5003, debug=True)
+
+'''
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -142,53 +205,5 @@ def logout():
         return jsonify('Logged out'), 200
     except Exception as e:
         return jsonify({'exception': str(e)}), 400
-
-@app.route('/api/v1.0/upload_page')
-#@auth.login_required
-def upload_page():
-   return render_template('upload.html')
-	
-@app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
-#@auth.login_required
-def upload_file():
-   if request.method == 'POST':
-      f = request.files['file']
-      f.save(os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(f.filename)))
-      return 'File uploaded successfully'
-
-@app.route('/')
-#@auth.login_required
-def index_page():  
-    return render_template('index.html')#, task_id=thread_id)
-
-@app.route('/api/v1.0/new_task')
-#@auth.login_required
-def new_task():
-    #print('new_task')
-    global exporting_threads
-    for thread_id in list(calculation_threads.keys()):
-        if calculation_threads[thread_id].finished:
-            del calculation_threads[thread_id]
-            print(f"{thread_id} - is removed")
-    thread_id = random.randint(0, 10000)
-    calculation_threads[thread_id] = CalculationThread(thread_id)
-    return str(thread_id)
-
-@app.route('/api/v1.0/progress/<int:thread_id>')
-#@auth.login_required
-def progress(thread_id):
-    global calculation_threads
-    if thread_id in calculation_threads:
-        if not calculation_threads[thread_id].is_alive() and not calculation_threads[thread_id].started:
-            calculation_threads[thread_id].start()
-            #print(f"{thread_id} - is started")
-        progress = calculation_threads[thread_id].progress
-        return str(progress)
-    else:
-        return 'Wrong thread_id!'
-
-#########################################################################
-
-if __name__ == "__main__":
-    app.run(host='127.0.0.1', port=5003, debug=True)
-
+'''
+pass

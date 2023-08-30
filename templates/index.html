@@ -5,27 +5,42 @@
             return new Promise((resolve) => setTimeout(resolve, time));
             }
             function new_task() {
-                $.get('/api/v1.0/new_task', function(task_id) {
+                $.get('/api/v1.0/calculate', function(task_id) {
                     //alert(task_id)
                     document.getElementById('task_id').value = task_id;
-                    document.getElementById('task_dv').innerHTML = task_id;
+                    document.getElementById('task_dv').innerHTML = 'task_id = ' + task_id;
                 })
+            }
+            function request_results(task_id) {
+                function _req() {
+                    $.get('/api/v1.0/results/' + task_id, function(results) {
+                        if (results.includes("!")) {
+                            setTimeout(_req, 1000);
+                        } else {
+                            document.getElementById('results_text').value = results;
+                        }
+                    })
+                }
+                _req();
             }
             function check_progress() {
                 task_id = document.getElementById('task_id').value;
                 progress_bar = document.getElementById('progress');
                 progress_bar.value = 0;
-                function worker() {
+                function _req() {
                     $.get('/api/v1.0/progress/' + task_id, function(progress) {
                         progress_bar.value = progress;
                         if (progress < 100) {
-                            setTimeout(worker, 1000);
+                            setTimeout(_req, 1000);
                         } else {
                             document.getElementById('calc_button').disabled = false;
+                            sleep(1000).then(() => {
+                                request_results(task_id);
+                            });
                         }
                     })
                 }
-                worker();
+                _req();
             }
             function calculate() {
                 new_task();
@@ -35,17 +50,36 @@
                 });
             }
 	</script>
-    <body>
-        <div id = "task_dv">{{ task_id }}</div>
-        <input type = "hidden" value = "{{ task_id }}" id = "task_id"/>
-        <progress id = "progress" max = "100" value = "0"></progress><br />
+    <body> 
+    <table border = "1">
+        <form action = "http://localhost:5000/api/v1.0/uploader" method = "POST" enctype = "multipart/form-data"></form>
+            <tr>
+                <td><div>consumption_file:  </td><td><input type = "file" name = "consumption_file" /><br /></div></td>
+                <td rowspan = "6">
+                    <textarea id = "results_text" rows = "15" cols = "40">Results will be here...</textarea>
+                    <input type = "hidden" value = "{{ task_id }}" id = "task_id"/><br />
+                    <progress id = "progress" max = "100" value = "0" style="width: 100%"></progress><br />
+                </td>
+            <tr>
+                <td><div>production_file:   </td><td><input type = "file" name = "production_file" /><br /></div></td>
+            <tr>
+                <td><div>building_file:     </td><td><input type = "file" name = "building_file" /><br /></div></td>
+            <tr>
+                <td><div>location_file:     </td><td><input type = "file" name = "location_file" /><br /></div></td>
+            <tr>
+                <td><div>equipment_file:    </td><td><input type = "file" name = "equipment_file" /><br /></div></td>
+            <tr>
+                <td><div>baterry_file:      </td><td><input type = "file" name = "baterry_file" /><br /></div></td>
+            <tr>
+                <td><input type="submit"/></td>
+                <td></td>
+                <td><div id = "task_dv">task_id = {{ task_id }}</div>
+                    <input type = "button" onclick = "javascript:calculate();" value = "calculate" id = "calc_button"/>
+                </td>
+            </form> 
+    </table>
 
-		<input type = "button" onclick = "javascript:calculate();" value = "calculate" id = "calc_button"/><br />
-
-        <form action = "http://localhost:5000/api/v1.0/uploader" method = "POST" 
-            enctype = "multipart/form-data">
-            <input type = "file" name = "file" />
-            <input type="submit"/>
-        </form>   
+            
     </body>
 </html>
+

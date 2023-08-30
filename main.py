@@ -18,17 +18,18 @@ os.makedirs(solution_dir, exist_ok=True)
 top_limit = 5
 
 def print_building(building):
-    print(f'building {building.uuid}:')
-    print(f" total_production: {building.production['production'].sum():.1f}")
-    print(f" total_consumption: {building.consumption['consumption'].sum():.1f}")
-    print(f" total_solar_energy_underproduction: {building.total_solar_energy_underproduction:.1f}")
-    print(f" total_building_energy_costs: {total_building_energy_costs(building):.1f}")
-    print(f" locations_involved: {len(building._locations)}")
-    print(f" total_renting_costs: {building.total_renting_costs:.1f}")
-    print(f" equipment_units_used: {sum([eq['pv_count'] for loc in building._locations for eq in loc['_equipment']])}")
-    print(f" total_equipment_costs: {building.total_equipment_costs:.1f}")
-    print(f" baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}")
-    print(f" total_battery_costs: {building.total_battery_costs:.1f}")
+    status = f"""building {building.uuid}:
+    total_production: {building.production['production'].sum():.1f}
+    total_consumption: {building.consumption['consumption'].sum():.1f}
+    total_solar_energy_underproduction: {building.total_solar_energy_underproduction:.1f}
+    total_building_energy_costs: {total_building_energy_costs(building):.1f}
+    locations_involved: {len(building._locations)}
+    total_renting_costs: {building.total_renting_costs:.1f}
+    equipment_units_used: {sum([eq['pv_count'] for loc in building._locations for eq in loc['_equipment']])}
+    total_equipment_costs: {building.total_equipment_costs:.1f}
+    baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}
+    total_battery_costs: {building.total_battery_costs:.1f}"""
+    print(status)
 
 if __name__ == "__main__":
         
@@ -60,9 +61,9 @@ if __name__ == "__main__":
     solution_data = pd.read_csv(os.path.join(base_dir, 'solution.csv'), sep=';', converters={'solution': literal_eval})
     solution_data.index = range(1, len(solution_data)+1)  
     print('data loading:')  
-    print(f" locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
-    print(f" buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
-    print(f" stored solutions: {len(solution_data)}")
+    print(f"    locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
+    print(f"    buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
+    print(f"    stored solutions: {len(solution_data)}")
 
     buildings = []
     for idx, item in building_data.iterrows():
@@ -83,20 +84,20 @@ if __name__ == "__main__":
         start_time = time.time()
         solver = ConstraintSolver(building, components)
         solutions = solver.get_solutions()   
-        print(f' solving time: {time.time() - start_time}')
+        print(f'    solving time: {time.time() - start_time}')
         solutions = solutions[:top_limit]
         solutions.reverse()
     
-        print(f' top-5 solutions (reversed):')
-        print('  A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+        print(f'    top-5 solutions (reversed):')
+        print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
         for i, s in enumerate(solutions):
             if i == top_limit-1:
-                print(f"  optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
+                print(f"    optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
                 _update_building(building, components, solutions[0])
                 solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
                 print_building(building)
             else:
-                print(f'  {s} cost: {solver.calc_solution_costs(s):.3f}')            
+                print(f'    {s} cost: {solver.calc_solution_costs(s):.3f}')            
     
     solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
     
