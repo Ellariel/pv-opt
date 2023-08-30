@@ -1,0 +1,51 @@
+<html>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script type = "text/javascript">
+            function sleep (time) {
+            return new Promise((resolve) => setTimeout(resolve, time));
+            }
+            function new_task() {
+                $.get('/api/v1.0/new_task', function(task_id) {
+                    //alert(task_id)
+                    document.getElementById('task_id').value = task_id;
+                    document.getElementById('task_dv').innerHTML = task_id;
+                })
+            }
+            function check_progress() {
+                task_id = document.getElementById('task_id').value;
+                progress_bar = document.getElementById('progress');
+                progress_bar.value = 0;
+                function worker() {
+                    $.get('/api/v1.0/progress/' + task_id, function(progress) {
+                        progress_bar.value = progress;
+                        if (progress < 100) {
+                            setTimeout(worker, 1000);
+                        } else {
+                            document.getElementById('calc_button').disabled = false;
+                        }
+                    })
+                }
+                worker();
+            }
+            function calculate() {
+                new_task();
+                //document.getElementById('calc_button').disabled = true;
+                sleep(200).then(() => {
+                    check_progress();
+                });
+            }
+	</script>
+    <body>
+        <div id = "task_dv">{{ task_id }}</div>
+        <input type = "hidden" value = "{{ task_id }}" id = "task_id"/>
+        <progress id = "progress" max = "100" value = "0"></progress><br />
+
+		<input type = "button" onclick = "javascript:calculate();" value = "calculate" id = "calc_button"/><br />
+
+        <form action = "http://localhost:5000/api/v1.0/uploader" method = "POST" 
+            enctype = "multipart/form-data">
+            <input type = "file" name = "file" />
+            <input type="submit"/>
+        </form>   
+    </body>
+</html>

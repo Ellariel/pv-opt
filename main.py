@@ -15,6 +15,8 @@ os.makedirs(consumption_dir, exist_ok=True)
 os.makedirs(production_dir, exist_ok=True)
 os.makedirs(solution_dir, exist_ok=True)
 
+top_limit = 5
+
 def print_building(building):
     print(f'building {building.uuid}:')
     print(f" total_production: {building.production['production'].sum():.1f}")
@@ -82,18 +84,19 @@ if __name__ == "__main__":
         solver = ConstraintSolver(building, components)
         solutions = solver.get_solutions()   
         print(f' solving time: {time.time() - start_time}')
+        solutions = solutions[:top_limit]
+        solutions.reverse()
     
-        print(f' top-5 solutions:')
-        for s in solutions[:5]:
-            print(' ', s, 'cost:', solver.calc_solution_costs(s))
-
-        print('''  A - location, B - equipment, C - equipment count, D - battery, E - battery count''')
-        print(f"optimal solution: {solutions[0]}")
-        #solutions[0]['C'] = 1
-        _update_building(building, components, solutions[0])
-        print('saving...')
-        solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
-        print_building(building)  
+        print(f' top-5 solutions (reversed):')
+        print('  A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+        for i, s in enumerate(solutions):
+            if i == top_limit-1:
+                print(f"  optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
+                _update_building(building, components, solutions[0])
+                solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
+                print_building(building)
+            else:
+                print(f'  {s} cost: {solver.calc_solution_costs(s):.3f}')            
     
     solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
     
