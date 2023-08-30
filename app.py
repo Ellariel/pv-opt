@@ -28,7 +28,7 @@ class CalculationThread(threading.Thread):
         print(f"{self.thread_id} - is started")
         # Your exporting stuff goes here ...
         for _ in range(11):
-            time.sleep(1)
+            time.sleep(1) 
             self.progress += 10
         self.calculation_results[self.thread_id] = f"{self.thread_id} - is finished"
         self.finished = True
