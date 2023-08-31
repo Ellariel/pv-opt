@@ -1,18 +1,18 @@
-from main import *
 from flask import *
-from flask_login import *
+#from flask_login import *
 #from flask_login import UserMixin
-from flask_sqlalchemy import SQLAlchemy
-from flask_httpauth import HTTPBasicAuth
+#from flask_sqlalchemy import SQLAlchemy
+#from flask_httpauth import HTTPBasicAuth
 #from flask.ext.login import LoginManager
 from flask import render_template
 from werkzeug.utils import secure_filename
 #from werkzeug.datastructures import FileStorage
 #from flaskwebgui import FlaskUI
-import jwt
+#import jwt
 import random
-import threading
-import time, os
+import threading, os
+#import time
+#from main import *
 import main
 
 class CalculationThread(threading.Thread):

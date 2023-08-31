@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from uuid import uuid4
-import json, random, math, os, pickle, time
+import json, os, pickle, time#, random, math
 import utils
 
 pv_gis = utils.PVGIS()

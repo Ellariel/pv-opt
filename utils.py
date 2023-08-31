@@ -1,5 +1,5 @@
 import json, time, requests, uuid, os, datetime, jsonpickle, pickle
-import pandas as pd, numpy as np
+import pandas as pd#, numpy as np
 from pandas import json_normalize
 
 def is_empty(x):

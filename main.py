@@ -1,10 +1,10 @@
-import json, time, uuid, os, sys, pickle
-import pandas as pd, numpy as np
-from ppretty import ppretty
+import time, os, sys#, pickle, json, uuid
+import pandas as pd#, numpy as np
+#from ppretty import ppretty
 from ast import literal_eval
 
 import equip
-from equip import Building, Equipment, Location, Battery
+#from equip import Building, Equipment, Location, Battery
 from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 base_dir = './'
@@ -77,11 +77,11 @@ def init_components(base_dir):
     _print(f"    stored solutions: {len(solution_data)}")
     
     for idx, item in building_data.iterrows():
-        b = Building(**item.to_dict())
+        b = equip.Building(**item.to_dict())
         b.load_production(production_data, storage=production_dir)
         b.load_consumption(consumption_data, storage=consumption_dir)
         for idx, item in location_data[location_data['building'] == b.uuid].iterrows():
-            loc = Location.copy()
+            loc = equip.Location.copy()
             loc.update(item.to_dict())
             b._locations.append(loc)
         b.updated(update_production=False)

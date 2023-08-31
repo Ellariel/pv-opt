@@ -1,12 +1,12 @@
-import json, time, requests, uuid, os, datetime, random, copy, pickle
+import time, os, copy, pickle#, datetime, random, requests, uuid, json, 
 import pandas as pd, numpy as np
-from tqdm.notebook import tqdm
-from pandas import json_normalize
+#from tqdm.notebook import tqdm
+#from pandas import json_normalize
 import constraint, itertools
 from uuid import uuid4
 
 from utils import Cache, is_empty
-from equip import Building, Equipment, Location, Battery, _calc_battery_costs
+#from equip import Building, Equipment, Location, Battery, _calc_battery_costs
 
 # IC – installation costs / kWp and installation costs / kWh
 # solar panel overproduction SPO = max{0, (building solar production - building consumption)}
