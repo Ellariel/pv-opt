@@ -1,6 +1,7 @@
 <html>
     <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script type = "text/javascript">
+            //alert(eval(window.location.origin + '/api/v1.0/upload'))
             function sleep(time) {
                 return new Promise((resolve) => setTimeout(resolve, time));
             }
@@ -66,12 +67,12 @@
             }
 	</script>
     <body> 
-    <table border="1">
-        <form action = "http://localhost:5003/api/v1.0/upload" method = "POST" enctype = "multipart/form-data">
+    <table border="0">
+        <form action = "/api/v1.0/upload" method = "POST" enctype = "multipart/form-data">
             <tr>
                 <td><div>consumption_file:  </td><td><input type = "file" name = "consumption_file" /><br /></div></td>
                 <td rowspan = "6">
-                    <textarea id = "results_text" rows = "15" cols = "65">{{ files_uploaded }}Results will be here...</textarea>
+                    <textarea id = "results_text" rows = "15" cols = "48">{{ files_uploaded }}Results will be here...</textarea>
                     <input type = "hidden" value = "{{ task_id }}" id = "task_id"/><br />
                     <progress id = "progress" max = "100" value = "0" style = "width: 100%"></progress><br />
                 </td>

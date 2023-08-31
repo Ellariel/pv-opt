@@ -8,7 +8,7 @@ from flask_httpauth import HTTPBasicAuth
 from flask import render_template
 from werkzeug.utils import secure_filename
 #from werkzeug.datastructures import FileStorage
-from flaskwebgui import FlaskUI
+#from flaskwebgui import FlaskUI
 import jwt
 import random
 import threading
@@ -45,20 +45,22 @@ class CalculationThread(threading.Thread):
         self.finished = True
         print(f"{self.thread_id} - is finished")
 
-app = Flask(__name__)
 base_dir = './uploaded'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
-app.config['SECRET_KEY'] = 'secret_key'
-app.config['UPLOAD_FOLDER'] = base_dir
-app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
-os.makedirs(base_dir, exist_ok=True)
-
 calculation_threads = {}
 calculation_results = {}
-
 files_types = ['consumption_file', 'production_file', 'building_file',
                'location_file', 'equipment_file', 'battery_file']
-	
+
+#os.environ['FLASK_RUN_PORT'] = '8000'
+#os.environ['FLASK_RUN_HOST'] = "127.0.0.1"
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
+app.config['SECRET_KEY'] = '!secret_key!'
+os.makedirs(base_dir, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = base_dir
+app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
+
 @app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
 #@auth.login_required
 def upload_files():
