@@ -2,55 +2,65 @@
     <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script type = "text/javascript">
             function sleep(time) {
-            return new Promise((resolve) => setTimeout(resolve, time));
+                return new Promise((resolve) => setTimeout(resolve, time));
             }
-            function submit() {
-            return new Promise((resolve) => setTimeout(resolve, time));
+            function _print(value) {
+                document.getElementById('results_text').value += '\n' + value;
             }
             function new_task() {
-                $.get('/api/v1.0/calculate', function(json_data) {
-                    req = JSON.parse(JSON.stringify(json_data));
+                $.get('/api/v1.0/calculate', function(req) {
                     document.getElementById('task_id').value = req.task_id;
                     document.getElementById('task_dv').innerHTML = 'task_id = ' + req.task_id;
-                })
+                });
             }
             function request_results(task_id) {
                 function _req() {
-                    $.get('/api/v1.0/results/' + task_id, function(json_data) {
-                        req = JSON.parse(JSON.stringify(json_data));
-                        if (req.results == "") {
-                            setTimeout(_req, 1000);
-                        } else {
-                            document.getElementById('results_text').value += '\n' + req.results;
+                    $.get('/api/v1.0/results/' + task_id, function(req) {
+                        if (req.exception == '') {
+                            if (req.results == '') {
+                                setTimeout(_req, 1000);
+                            } else {
+                                _print(req.results);
+                            }
+                        }  else {
+                            _print(req.exception);
                         }
-                    })
+                    });
                 }
                 _req();
             }
             function check_progress() {
                 task_id = document.getElementById('task_id').value;
                 progress_bar = document.getElementById('progress');
+                calc_button = document.getElementById('calc_button');
                 progress_bar.value = 0;
                 function _req() {
-                    $.get('/api/v1.0/progress/' + task_id, function(json_data) {
-                        req = JSON.parse(JSON.stringify(json_data));
-                        progress_bar.value = req.progress;
-                        if (!req.finished) {
-                            setTimeout(_req, 1000);
-                        } else {
-                            document.getElementById('calc_button').disabled = false;
-                            sleep(1000).then(() => {
+                    $.get('/api/v1.0/progress/' + task_id, function(req) {
+                        if (req.exception == '') {
+                            if (!req.finished) {
+                                progress_bar.value += 10; //req.progress;
+                                if (progress_bar.value >= 100) {
+                                    progress_bar.value = 0;
+                                }
+                                setTimeout(_req, 1000);
+                            } else {
+                                calc_button.disabled = false;
+                                progress_bar.value = 100;
                                 request_results(task_id);
-                            });
+                            }
+                        } else {
+                            calc_button.disabled = false;
+                            progress_bar.value = 0;
+                            _print(req.exception);
                         }
-                    })
+                    });
                 }
                 _req();
             }
             function calculate() {
+                document.getElementById('calc_button').disabled = true;
                 new_task();
-                //document.getElementById('calc_button').disabled = true;
-                sleep(200).then(() => {
+                sleep(300).then(() => {
                     check_progress();
                 });
             }
@@ -61,7 +71,7 @@
             <tr>
                 <td><div>consumption_file:  </td><td><input type = "file" name = "consumption_file" /><br /></div></td>
                 <td rowspan = "6">
-                    <textarea id = "results_text" rows = "15" cols = "35">{{ files_uploaded }}Results will be here...</textarea>
+                    <textarea id = "results_text" rows = "15" cols = "65">{{ files_uploaded }}Results will be here...</textarea>
                     <input type = "hidden" value = "{{ task_id }}" id = "task_id"/><br />
                     <progress id = "progress" max = "100" value = "0" style = "width: 100%"></progress><br />
                 </td>

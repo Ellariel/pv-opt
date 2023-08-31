@@ -12,12 +12,14 @@ from flaskwebgui import FlaskUI
 import jwt
 import random
 import threading
-import time
+import time, os
+import main
 
 class CalculationThread(threading.Thread):
     def __init__(self, thread_id, calculation_results):
         self.thread_id = thread_id
         self.calculation_results = calculation_results
+        self.calculation_results[self.thread_id] = ''
         self.progress = 0
         self.finished = False
         self.started = False
@@ -26,23 +28,30 @@ class CalculationThread(threading.Thread):
     def run(self):
         self.started = True
         print(f"{self.thread_id} - is started")
+        
         # Your exporting stuff goes here ...
-        for _ in range(13):
-            time.sleep(1) 
-            self.progress += 10
-            if self.progress > 100:
-                self.progress = 0
+        # for _ in range(13):
+        #     time.sleep(1) 
+        #     self.progress += 10
+        #     if self.progress > 100:
+        #         self.progress = 0
+        
+        main.init_components(base_dir)
+        main.calculate(base_dir)
+        #time.sleep(3)    
+                
         self.progress = 100
-        self.calculation_results[self.thread_id] = f"{self.thread_id} - is finished"
+        self.calculation_results[self.thread_id] = f"{self.thread_id} - is finished\n" + main.log
         self.finished = True
         print(f"{self.thread_id} - is finished")
 
 app = Flask(__name__)
+base_dir = './uploaded'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
 app.config['SECRET_KEY'] = 'secret_key'
-app.config['UPLOAD_FOLDER'] = './uploaded'
+app.config['UPLOAD_FOLDER'] = base_dir
 app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(base_dir, exist_ok=True)
 
 calculation_threads = {}
 calculation_results = {}
@@ -59,7 +68,7 @@ def upload_files():
                 f = request.files[ft]
                 if len(secure_filename(f.filename)):
                     print(f.filename)
-                    f.save(os.path.join(app.config['UPLOAD_FOLDER'], ft.split('_')[0] + '.csv'))
+                    f.save(os.path.join(base_dir, ft.split('_')[0] + '.csv'))
         return index_page(files_uploaded='\nFiles uploaded successfully!\n')
 
 @app.route('/')
@@ -88,20 +97,19 @@ def api_results(thread_id):
         results = calculation_results[thread_id]
         return jsonify({'task_id': thread_id, 'results': results, 'exception': ''})
     else:
-        return jsonify({'task_id': thread_id, 'results': '', 'exception': 'No results yet!'})
+        return jsonify({'task_id': thread_id, 'results': '', 'exception': 'No such results!'})
     
 @app.route('/api/v1.0/progress/<int:thread_id>')
 #@auth.login_required
 def api_progress(thread_id):
     global calculation_threads
     if thread_id in calculation_threads:
-        if not calculation_threads[thread_id].is_alive() and not calculation_threads[thread_id].started:
-            calculation_threads[thread_id].start()
-        progress = calculation_threads[thread_id].progress
-        finished = calculation_threads[thread_id].finished
-        return jsonify({'task_id': thread_id, 'progress': progress, 'finished': finished, 'exception': ''})
+        thread = calculation_threads[thread_id]
+        if not thread.is_alive() and not thread.started:
+            thread.start()
+        return jsonify({'task_id': thread_id, 'progress': thread.progress, 'finished': thread.finished, 'exception': ''})
     else:
-        return jsonify({'task_id': thread_id, 'exception': 'Wrong thread_id!'})
+        return jsonify({'task_id': thread_id, 'exception': 'Wrong task_id!'})
 
 #########################################################################
 

@@ -8,6 +8,11 @@ from equip import Building, Equipment, Location, Battery
 from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 base_dir = './'
+top_limit = 5
+components = {}
+buildings = []
+log = ''
+
 consumption_dir = os.path.join(base_dir, 'consumption')
 production_dir = os.path.join(base_dir, 'production')
 solution_dir = os.path.join(base_dir, 'solution')
@@ -15,7 +20,10 @@ os.makedirs(consumption_dir, exist_ok=True)
 os.makedirs(production_dir, exist_ok=True)
 os.makedirs(solution_dir, exist_ok=True)
 
-top_limit = 5
+def _print(value):
+    global log
+    log += '\n' + value
+    print(value)    
 
 def print_building(building):
     status = f"""building {building.uuid}:
@@ -29,12 +37,15 @@ def print_building(building):
     total_equipment_costs: {building.total_equipment_costs:.1f}
     baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}
     total_battery_costs: {building.total_battery_costs:.1f}"""
-    print(status)
+    _print(status)
 
-if __name__ == "__main__":
-        
-    components = {}
-    print(f'base_dir: {base_dir}')
+def init_components(base_dir):
+    global location_data, equipment_data, battery_data, building_data
+    global consumption_data, production_data, solution_data
+    global components, buildings, log
+    
+    log = ''
+    _print(f'base_dir: {base_dir}')
     location_data = pd.read_csv(os.path.join(base_dir, 'location.csv'), sep=';', converters={'size_m': literal_eval})
     location_data.index = range(1, len(location_data)+1)
     components['location'] = location_data.to_dict(orient='index')
@@ -60,12 +71,11 @@ if __name__ == "__main__":
     
     solution_data = pd.read_csv(os.path.join(base_dir, 'solution.csv'), sep=';', converters={'solution': literal_eval})
     solution_data.index = range(1, len(solution_data)+1)  
-    print('data loading:')  
-    print(f"    locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
-    print(f"    buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
-    print(f"    stored solutions: {len(solution_data)}")
-
-    buildings = []
+    _print('data loading:')  
+    _print(f"    locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
+    _print(f"    buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
+    _print(f"    stored solutions: {len(solution_data)}")
+    
     for idx, item in building_data.iterrows():
         b = Building(**item.to_dict())
         b.load_production(production_data, storage=production_dir)
@@ -77,29 +87,42 @@ if __name__ == "__main__":
         b.updated(update_production=False)
         buildings.append(b)
 
+def calculate(base_dir):
+    global location_data, equipment_data, battery_data, building_data
+    global consumption_data, production_data, solution_data
+    global components, buildings    
+    
     for building in buildings:
-        print_building(building)
+        #print_building(building)
         building._erase_equipment()
-        print('solving...')
+        _print('solving...')
         start_time = time.time()
         solver = ConstraintSolver(building, components)
         solutions = solver.get_solutions()   
-        print(f'    solving time: {time.time() - start_time}')
+        _print(f'    solving time: {time.time() - start_time}')
         solutions = solutions[:top_limit]
         solutions.reverse()
     
-        print(f'    top-5 solutions (reversed):')
-        print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+        _print(f'    top-5 solutions (reversed):')
+        _print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
         for i, s in enumerate(solutions):
             if i == top_limit-1:
-                print(f"    optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
+                _print(f"    optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
                 _update_building(building, components, solutions[0])
                 solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
                 print_building(building)
             else:
-                print(f'    {s} cost: {solver.calc_solution_costs(s):.3f}')            
+                _print(f'    {s} cost: {solver.calc_solution_costs(s):.3f}')            
     
     solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
+    
+
+if __name__ == "__main__":
+    pass
+    
+
+
+
     
     
     
