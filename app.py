@@ -54,7 +54,7 @@ files_types = ['consumption_file', 'production_file', 'building_file',
 #os.environ['FLASK_RUN_PORT'] = '8000'
 #os.environ['FLASK_RUN_HOST'] = "127.0.0.1"
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='./template', static_folder='./static')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
 app.config['SECRET_KEY'] = '!secret_key!'
 os.makedirs(base_dir, exist_ok=True)

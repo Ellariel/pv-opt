@@ -1,6 +1,7 @@
 <html>
-    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<script type = "text/javascript">
+    <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script type="text/javascript">
             //alert(eval(window.location.origin + '/api/v1.0/upload'))
             function sleep(time) {
                 return new Promise((resolve) => setTimeout(resolve, time));
@@ -66,7 +67,34 @@
                 });
             }
 	</script>
-    <body> 
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/style.css" />
+    </head>
+    <body>
+
+
+        <ul id="globalnav">
+            <li><a href="#" class="here">Solutions</a></li>
+            <ul>
+                <li><a href="#">Calculate</a></li>
+                <li><a href="#" class="here">Saved</a></li>
+            </ul>
+            <li><a href="#">Infrastructure</a></li>
+            <ul style="visibility: hidden">
+                <li><a href="#">Buildings</a></li>
+                <li><a href="#" class="here">Locations</a></li>
+            </ul>
+            <li><a href="#">Equipment</a></li>
+            <ul style="visibility: hidden">
+                <li><a href="#">PV</a></li>
+                <li><a href="#" class="here">Batteries</a></li>
+            </ul>
+            <li><a href="#">Upload</a></li>
+        </ul>
+
+
+
+
     <table border="0">
         <form action = "/api/v1.0/upload" method = "POST" enctype = "multipart/form-data">
             <tr>
