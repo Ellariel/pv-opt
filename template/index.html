@@ -1,6 +1,15 @@
 <html>
     <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <link href="/static/datatables.min.css" rel="stylesheet">
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+        <link rel="stylesheet" href="/static/style.css" />
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>-->
+        <!--<script src="https://code.jquery.com/jquery-3.7.0.js"></script>-->
+        <script src="/static/jquery-3.7.0.js"></script>
+        <script src="/static/datatables.min.js"></script>
+  
+    
+
 	<script type="text/javascript">
             //alert(eval(window.location.origin + '/api/v1.0/upload'))
             function sleep(time) {
@@ -66,65 +75,154 @@
                     check_progress();
                 });
             }
+            function request_table(table_name) {
+                $.get('/api/v1.0/table/' + table_name, function(req) {
+                    if (req.exception == '') {
+                        if ($.fn.dataTable.isDataTable('#'+table_name)) {
+                            table = $('#'+table_name).DataTable({data: req.data, retrieve: true, searching: false});
+                        } else {
+                            table = new DataTable('#'+table_name, {columns: req.cols, data: req.data, searching: false});
+                        }
+                    }
+                });
+            }
+            function hide(id){
+                    e = document.getElementById(id)
+                    if (e != null) {e.style = "display: none;"}
+                    //if (e != null) {e.style = "visibility: hidden;"}
+                }
+            function show(id){
+                    e = document.getElementById(id)
+                    if (e != null) {e.style = "display: block;"}
+                    //if (e != null) {e.style = "visibility: visible;"}
+                }
+            function tab_click(tab_id) {
+                document.getElementById('a_solutions').classList.remove('here');
+                document.getElementById('a_infrastructure').classList.remove('here');
+                document.getElementById('a_equipment').classList.remove('here');
+                document.getElementById('a_uploading').classList.remove('here');
+                hide('tab_solutions');
+                hide('tab_infrastructure');
+                hide('tab_equipment');
+                hide('tab_uploading');
+                if (tab_id == 'tab_solutions') {
+                    document.getElementById('a_solutions').classList.add('here');
+                    show('tab_solutions');
+                    subtab_click('calculation');
+                }
+                if (tab_id == 'tab_infrastructure') {
+                    document.getElementById('a_infrastructure').classList.add('here');
+                    show('tab_infrastructure');
+                    subtab_click('building_data');
+                }
+                if (tab_id == 'tab_equipment') {
+                    document.getElementById('a_equipment').classList.add('here');
+                    show('tab_equipment');
+                    subtab_click('equipment_data');
+                }
+                if (tab_id == 'tab_uploading') {
+                    document.getElementById('a_uploading').classList.add('here');
+                    show('tab_uploading');
+                    subtab_click('uploading');
+                }
+            }
+            function subtab_click(tab_id) {
+                if (!document.getElementById('a_'+tab_id).classList.contains('here')) {
+                    if (tab_id != 'uploading' & tab_id != 'calculation'){
+                    request_table(tab_id);
+                    }
+                }
+                document.getElementById('a_calculation').classList.remove('here');
+                document.getElementById('a_solution_data').classList.remove('here');
+                document.getElementById('a_building_data').classList.remove('here');
+                document.getElementById('a_location_data').classList.remove('here');
+                document.getElementById('a_equipment_data').classList.remove('here');
+                document.getElementById('a_battery_data').classList.remove('here');
+                document.getElementById('a_'+tab_id).classList.add('here');
+                hide('calculation_div');
+                hide('solution_data_div');
+                hide('building_data_div');
+                hide('location_data_div');
+                hide('equipment_data_div');
+                hide('battery_data_div');
+                hide('uploading_div');
+                show(tab_id+'_div');
+            }
+
 	</script>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="stylesheet" href="/static/style.css" />
     </head>
     <body>
 
 
         <ul id="globalnav">
-            <li><a href="#" class="here">Solutions</a></li>
-            <ul>
-                <li><a href="#">Calculate</a></li>
-                <li><a href="#" class="here">Saved</a></li>
+            <li><a href="javascript: tab_click('tab_solutions');" id="a_solutions" class="here">Solutions</a></li>
+            <ul id="tab_solutions">
+                <li><a href="javascript: subtab_click('calculation');" id="a_calculation" class="here">Calculate</a></li>
+                <li><a href="javascript: subtab_click('solution_data');" id="a_solution_data">Saved solutions</a></li>
             </ul>
-            <li><a href="#">Infrastructure</a></li>
-            <ul style="visibility: hidden">
-                <li><a href="#">Buildings</a></li>
-                <li><a href="#" class="here">Locations</a></li>
+            <li><a href="javascript: tab_click('tab_infrastructure');" id="a_infrastructure">Infrastructure</a></li>
+            <ul id="tab_infrastructure" style="display: none;" >
+                <li><a href="javascript: subtab_click('building_data');" id="a_building_data" class="here">Buildings</a></li>
+                <li><a href="javascript: subtab_click('location_data');" id="a_location_data">Locations</a></li>
             </ul>
-            <li><a href="#">Equipment</a></li>
-            <ul style="visibility: hidden">
-                <li><a href="#">PV</a></li>
-                <li><a href="#" class="here">Batteries</a></li>
+            <li><a href="javascript: tab_click('tab_equipment');" id="a_equipment">Equipment</a></li>
+            <ul id="tab_equipment" style="display: none;">
+                <li><a href="javascript: subtab_click('equipment_data');" id="a_equipment_data" class="here">Photovoltaic</a></li>
+                <li><a href="javascript: subtab_click('battery_data');" id="a_battery_data">Batteries</a></li>
             </ul>
-            <li><a href="#">Upload</a></li>
+            <li><a href="javascript: tab_click('tab_uploading');" id="a_uploading">Upload</a></li>
+            <ul id="tab_uploading" style="display: none;">
+                <li><a href="#">&nbsp;</a></li>
+            </ul>
         </ul>
 
+        <div id="solution_data_div"><table id="solution_data" class="display" width="100%"></table></div>
+        <div id="building_data_div"><table id="building_data" class="display" width="100%"></table></div>
+        <div id="location_data_div"><table id="location_data" class="display" width="100%"></table></div>
+        <div id="equipment_data_div"><table id="equipment_data" class="display" width="100%"></table></div>
+        <div id="battery_data_div"><table id="battery_data" class="display" width="100%"></table></div>
 
-
-
-    <table border="0">
-        <form action = "/api/v1.0/upload" method = "POST" enctype = "multipart/form-data">
-            <tr>
-                <td><div>consumption_file:  </td><td><input type = "file" name = "consumption_file" /><br /></div></td>
-                <td rowspan = "6">
-                    <textarea id = "results_text" rows = "15" cols = "48">{{ files_uploaded }}Results will be here...</textarea>
-                    <input type = "hidden" value = "{{ task_id }}" id = "task_id"/><br />
-                    <progress id = "progress" max = "100" value = "0" style = "width: 100%"></progress><br />
-                </td>
-            <tr>
-                <td><div>production_file:   </td><td><input type = "file" name = "production_file" /><br /></div></td>
-            <tr>
-                <td><div>building_file:     </td><td><input type = "file" name = "building_file" /><br /></div></td>
-            <tr>
-                <td><div>location_file:     </td><td><input type = "file" name = "location_file" /><br /></div></td>
-            <tr>
-                <td><div>equipment_file:    </td><td><input type = "file" name = "equipment_file" /><br /></div></td>
-            <tr>
-                <td><div>battery_file:      </td><td><input type = "file" name = "battery_file" /><br /></div></td>
-            <tr>
-                <td></td>
-                <td><div>&nbsp;</div>
-                    <button type = "submit" style = "width: 100%">upload</button></td>
-                <td><div id = "task_dv">task_id = {{ task_id }}</div>
-                    <button type = "button" onclick = "javascript:calculate();" id = "calc_button" style = "width: 100%">calculate</button>
-                </td>
-        </form> 
-    </table>
-
+        <div id="calculation_div">
+            <table>
+                    <tr>
+                        <td>
+                            <textarea id="results_text" rows="15" cols="65">{{ log }}{{ files_uploaded }}Results will be here...</textarea>
+                            <input type="hidden" value="{{ task_id }}" id="task_id"/><br />
+                            <progress id="progress" max="100" value="0" style="width: 100%"></progress><br />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><div id="task_dv">task_id={{ task_id }}</div>
+                            <button type="button" onclick="javascript:calculate();" id="calc_button" style="width: 100%">calculate</button>
+                        </td>
+                    </tr>
+            </table>
+        </div>
             
+        <div id="uploading_div" style="display: none;">
+            <table>
+                <form action="/api/v1.0/upload" method="POST" enctype="multipart/form-data">
+                    <tr>
+                        <td><div>consumption_file: </td><td><input type="file" name="consumption_file" /><br /></div></td>
+                    <tr>
+                        <td><div>production_file:  </td><td><input type="file" name="production_file" /><br /></div></td>
+                    <tr>
+                        <td><div>building_file:    </td><td><input type="file" name="building_file" /><br /></div></td>
+                    <tr>
+                        <td><div>location_file:    </td><td><input type="file" name="location_file" /><br /></div></td>
+                    <tr>
+                        <td><div>equipment_file:   </td><td><input type="file" name="equipment_file" /><br /></div></td>
+                    <tr>
+                        <td><div>battery_file:     </td><td><input type="file" name="battery_file" /><br /></div></td>
+                    <tr>
+                        <td></td>
+                        <td><div>&nbsp;</div>
+                            <button type="submit" style="width: 100%">upload</button></td>
+                </form> 
+            </table>
+
+        </div>
+
     </body>
 </html>
 

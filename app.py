@@ -36,7 +36,7 @@ class CalculationThread(threading.Thread):
         #     if self.progress > 100:
         #         self.progress = 0
         
-        main.init_components(base_dir)
+        # main.init_components(base_dir)
         main.calculate(base_dir)
         #time.sleep(3)    
                 
@@ -60,10 +60,12 @@ app.config['SECRET_KEY'] = '!secret_key!'
 os.makedirs(base_dir, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = base_dir
 app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
+main.init_components(base_dir)
 
 @app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
 #@auth.login_required
 def upload_files():
+    uploaded = False
     if request.method == 'POST':
         for ft in files_types:
             if ft in request.files:
@@ -71,11 +73,16 @@ def upload_files():
                 if len(secure_filename(f.filename)):
                     print(f.filename)
                     f.save(os.path.join(base_dir, ft.split('_')[0] + '.csv'))
-        return index_page(files_uploaded='\nFiles uploaded successfully!\n')
+                    uploaded = True
+        if uploaded:
+            main.init_components(base_dir)
+            print('Files uploaded successfully!')
+        return index_page(files_uploaded='\nFiles uploaded successfully!\n', log=main.log)+'\n'
 
 @app.route('/')
 #@auth.login_required
-def index_page(**args):  
+def index_page(**args):
+    args.update({'log': main.log+'\n'})
     return render_template('index.html', **args)
 
 @app.route('/api/v1.0/calculate')
@@ -88,13 +95,14 @@ def api_calculate():
             print(f"{thread_id} - is removed")
     thread_id = random.randint(0, 10000)
     calculation_threads[thread_id] = CalculationThread(thread_id, calculation_results)
+    print(f'Calculations are initialized: {thread_id}.')
     return {'task_id': thread_id, 'exception': ''}
 
 @app.route('/api/v1.0/results/<int:thread_id>')
 #@auth.login_required
 def api_results(thread_id):
     global calculation_results
-    print('results are requested')
+    print(f'Results are requested: {thread_id}.')
     if thread_id in calculation_results:
         results = calculation_results[thread_id]
         return jsonify({'task_id': thread_id, 'results': results, 'exception': ''})
@@ -109,14 +117,31 @@ def api_progress(thread_id):
         thread = calculation_threads[thread_id]
         if not thread.is_alive() and not thread.started:
             thread.start()
+            print(f'Calculations are started: {thread_id}.')
         return jsonify({'task_id': thread_id, 'progress': thread.progress, 'finished': thread.finished, 'exception': ''})
     else:
         return jsonify({'task_id': thread_id, 'exception': 'Wrong task_id!'})
+
+@app.route('/api/v1.0/table/<string:table_name>')
+#@auth.login_required
+def api_table(table_name):
+    if table_name in main.data_tables:
+        table = main.data_tables[table_name]
+        cols = [{'title': i} for i in table.columns]
+        print(f'Table is requested: {table_name}.')
+        if len(table):
+            data = [v.values.tolist() for k, v in table.iterrows()]
+            return jsonify({'table_name': table_name, 'data': data, 'cols': cols, 'exception': ''})
+        else:
+            return jsonify({'table_name': table_name, 'data': '', 'cols': cols, 'exception': 'Table is empty!'})
+    else:
+        return jsonify({'table_name': table_name, 'data': '', 'cols': '', 'exception': 'No such a table name!'})
 
 #########################################################################
 
 if __name__ == "__main__":
     app.run(host='127.0.0.1', port=5003, debug=True)
+    
 
 '''
 

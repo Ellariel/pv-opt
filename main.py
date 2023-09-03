@@ -10,8 +10,8 @@ from solver import ConstraintSolver, total_building_energy_costs, _update_buildi
 base_dir = './'
 top_limit = 5
 components = {}
-buildings = []
-log = ''
+building_objects = []
+data_tables = {}
 
 consumption_dir = os.path.join(base_dir, 'consumption')
 production_dir = os.path.join(base_dir, 'production')
@@ -20,10 +20,27 @@ os.makedirs(consumption_dir, exist_ok=True)
 os.makedirs(production_dir, exist_ok=True)
 os.makedirs(solution_dir, exist_ok=True)
 
-def _print(value):
+log = ''
+def _print(value, clear=False):
     global log
+    if clear:
+        log = ''
     log += '\n' + value
     print(value)    
+
+_rename = {'A': 'location_uuid',
+           'B': 'equipment_uuid',
+           'C': 'equipment_count',
+           'D': 'battery_uuid',
+           'E': 'battery_count',
+           }
+def _ren(s):
+    _r = {}
+    for k, v in s.items():
+        if k in _rename:    
+            _r.update({_rename[k]: v})
+    return _r
+        
 
 def print_building(building):
     status = f"""building {building.uuid}:
@@ -40,12 +57,9 @@ def print_building(building):
     _print(status)
 
 def init_components(base_dir):
-    global location_data, equipment_data, battery_data, building_data
-    global consumption_data, production_data, solution_data
-    global components, buildings, log
+    global components, building_objects, data_tables
     
-    log = ''
-    _print(f'base_dir: {base_dir}')
+    _print(f'base_dir: {base_dir}', clear=True)
     location_data = pd.read_csv(os.path.join(base_dir, 'location.csv'), sep=';', converters={'size_m': literal_eval})
     location_data.index = range(1, len(location_data)+1)
     components['location'] = location_data.to_dict(orient='index')
@@ -53,12 +67,12 @@ def init_components(base_dir):
     equipment_data = pd.read_csv(os.path.join(base_dir, 'equipment.csv'), sep=';', converters={'pv_size_mm': literal_eval})
     equipment_data.index = range(1, len(equipment_data)+1)
     components['equipment'] = equipment_data.to_dict(orient='index')
-    del equipment_data
+    #del equipment_data
     
     battery_data = pd.read_csv(os.path.join(base_dir, 'battery.csv'), sep=';')
     battery_data.index = range(1, len(battery_data)+1)
     components['battery'] = battery_data.to_dict(orient='index')
-    del battery_data
+    #del battery_data
     
     building_data = pd.read_csv(os.path.join(base_dir, 'building.csv'), sep=';')
     building_data.index = range(1, len(building_data)+1)
@@ -70,7 +84,17 @@ def init_components(base_dir):
     production_data.index = range(1, len(production_data)+1)
     
     solution_data = pd.read_csv(os.path.join(base_dir, 'solution.csv'), sep=';', converters={'solution': literal_eval})
-    solution_data.index = range(1, len(solution_data)+1)  
+    solution_data.index = range(1, len(solution_data)+1)
+    
+    data_tables = {'location_data': location_data,
+              'equipment_data': equipment_data, 
+              'battery_data': battery_data,
+              'building_data': building_data,
+              'consumption_data': consumption_data,
+              'production_data': production_data,
+              'solution_data': solution_data,
+    }    
+    
     _print('data loading:')  
     _print(f"    locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
     _print(f"    buildings: {len(building_data)}, production: {len(production_data)}, consumption: {len(consumption_data)}") 
@@ -78,6 +102,7 @@ def init_components(base_dir):
     
     for idx, item in building_data.iterrows():
         b = equip.Building(**item.to_dict())
+        
         b.load_production(production_data, storage=production_dir)
         b.load_consumption(consumption_data, storage=consumption_dir)
         for idx, item in location_data[location_data['building'] == b.uuid].iterrows():
@@ -85,14 +110,12 @@ def init_components(base_dir):
             loc.update(item.to_dict())
             b._locations.append(loc)
         b.updated(update_production=False)
-        buildings.append(b)
+        building_objects.append(b)
 
-def calculate(base_dir):
-    global location_data, equipment_data, battery_data, building_data
-    global consumption_data, production_data, solution_data
-    global components, buildings    
+def calculate(base_dir):   
+    global components, building_objects, data_tables
     
-    for building in buildings:
+    for building in building_objects:
         #print_building(building)
         building._erase_equipment()
         _print('solving...')
@@ -103,19 +126,18 @@ def calculate(base_dir):
         solutions = solutions[:top_limit]
         solutions.reverse()
     
-        _print(f'    top-5 solutions (reversed):')
-        _print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+        _print(f'    top-5 solutions (reversed order):')
+        #_print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
         for i, s in enumerate(solutions):
             if i == top_limit-1:
-                _print(f"    optimal: {s} cost: {solver.calc_solution_costs(s):.3f}")
+                _print(f"    optimal: {_ren(s)} cost: {solver.calc_solution_costs(s):.3f}")
                 _update_building(building, components, solutions[0])
-                solution_data = solver.save_solution(solution_data, building, solutions[0], storage=solution_dir)
+                data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, solutions[0], storage=solution_dir)
                 print_building(building)
             else:
-                _print(f'    {s} cost: {solver.calc_solution_costs(s):.3f}')            
+                _print(f'    {_ren(s)} cost: {solver.calc_solution_costs(s):.3f}')            
     
-    solution_data.to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
-    
+    data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
 
 if __name__ == "__main__":
     pass
