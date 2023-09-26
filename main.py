@@ -1,17 +1,26 @@
-import time, os, sys#, pickle, json, uuid
+import time, os, sys, glob#, pickle, json, uuid
 import pandas as pd#, numpy as np
+
 #from ppretty import ppretty
 from ast import literal_eval
 
 import equip
 #from equip import Building, Equipment, Location, Battery
+from utils import save_pickle, load_pickle, move_files
 from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 base_dir = './'
 top_limit = 5
 components = {}
 building_objects = []
-data_tables = {}
+data_tables = {'location_data': None,
+              'equipment_data': None, 
+              'battery_data': None,
+              'building_data': None,
+              'consumption_data': None,
+              'production_data': None,
+              'solution_data': None,
+}  
 
 consumption_dir = os.path.join(base_dir, 'consumption')
 production_dir = os.path.join(base_dir, 'production')
@@ -55,8 +64,85 @@ def print_building(building):
     baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}
     total_battery_costs: {building.total_battery_costs:.1f}"""
     _print(status)
+    
+def init_components(base_dir, upload_dir=None):
+    global components, building_objects, data_tables
+    
+    _print(f'base_dir: {base_dir}', clear=True)
+    
+    if not upload_dir:
+        data_tables = load_pickle(os.path.join(base_dir, 'components.pickle'))
+    else:
+        move_files(upload_dir['consumption_file'], consumption_dir)
+        move_files(upload_dir['production_file'], production_dir)
+        excel_file = glob.glob(os.path.join(upload_dir['excel_file'], '*.xlsx'))
+        if len(excel_file) and os.path.exists(excel_file[0]):
+            excel_file = excel_file[0] 
+            for k in data_tables.keys():  
+                try:    
+                    print(f'attempt to load {k} from {excel_file}')      
+                    df = pd.read_excel(excel_file, sheet_name=k.split('_')[0], converters={'size_m': literal_eval,
+                                                                                        'pv_size_mm': literal_eval,
+                    })
+                                                                                        #'solution': literal_eval})
+                    df.index = range(1, len(df)+1)
+                    #print(df.info())
+                    #print(df)
+                    data_tables[k] = df
+                    print(f'loaded data length: {len(df)}')
+                except Exception as e:
+                    print(f'error: {e}')
+            os.remove(excel_file)
+   
+    components['location'] = data_tables['location_data'].to_dict(orient='index')
+    components['equipment'] = data_tables['equipment_data'].to_dict(orient='index')
+    components['battery'] = data_tables['battery_data'].to_dict(orient='index')
 
-def init_components(base_dir):
+    _print('data loading:')  
+    _print(f"    locations: {len(components['location'])}, equipment: {len(components['equipment'])}, batteries: {len(components['battery'])}")
+    _print(f"    buildings: {len(data_tables['building_data'])}, production: {len(data_tables['production_data'])}, consumption: {len(data_tables['consumption_data'])}") 
+    _print(f"    stored solutions: {len(data_tables['solution_data'])}")
+    
+    for idx, item in data_tables['building_data'].iterrows():
+        b = equip.Building(**item.to_dict())
+        b.load_production(data_tables['production_data'], storage=production_dir)
+        b.load_consumption(data_tables['consumption_data'], storage=consumption_dir)
+        for idx, item in data_tables['location_data'][data_tables['location_data']['building'] == b.uuid].iterrows():
+            loc = equip.Location.copy()
+            loc.update(item.to_dict())
+            b._locations.append(loc)
+        b.updated(update_production=False)
+        building_objects.append(b)
+    
+def calculate(base_dir):   
+    global components, building_objects, data_tables
+    
+    for building in building_objects:
+        #print_building(building)
+        building._erase_equipment()
+        _print('solving...')
+        start_time = time.time()
+        solver = ConstraintSolver(building, components)
+        solutions = solver.get_solutions()   
+        _print(f'    solving time: {time.time() - start_time}')
+        solutions = solutions[:top_limit]
+        solutions.reverse()
+    
+        _print(f'    top-5 solutions (reversed order):')
+        #_print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+        for i, s in enumerate(solutions):
+            if i == top_limit-1:
+                _print(f"    optimal: {_ren(s)} cost: {solver.calc_solution_costs(s):.3f}")
+                _update_building(building, components, solutions[0])
+                data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, solutions[0], storage=solution_dir)
+                print_building(building)
+            else:
+                _print(f'    {_ren(s)} cost: {solver.calc_solution_costs(s):.3f}')            
+    
+    save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
+    #data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
+
+def _init_components(base_dir):
     global components, building_objects, data_tables
     
     _print(f'base_dir: {base_dir}', clear=True)
@@ -111,8 +197,10 @@ def init_components(base_dir):
             b._locations.append(loc)
         b.updated(update_production=False)
         building_objects.append(b)
+    
+    #save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
 
-def calculate(base_dir):   
+def _calculate(base_dir):   
     global components, building_objects, data_tables
     
     for building in building_objects:
@@ -265,4 +353,4 @@ if __name__ == "__main__":
     '''
  
     
-    sys.exit()
+    #sys.exit()

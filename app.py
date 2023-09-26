@@ -45,11 +45,23 @@ class CalculationThread(threading.Thread):
         self.finished = True
         print(f"{self.thread_id} - is finished")
 
-base_dir = './uploaded'
+base_dir = './'
+upload_dir = os.path.join(base_dir, 'uploaded')
+#files_types = ['consumption_file', 'production_file', 'excel_file']
+files_dir = {'consumption_file': os.path.join(upload_dir, 'consumption'),
+             'production_file': os.path.join(upload_dir, 'production'),
+             'excel_file': upload_dir}
+os.makedirs(upload_dir, exist_ok=True)
+os.makedirs(files_dir['consumption_file'], exist_ok=True)
+os.makedirs(files_dir['production_file'], exist_ok=True)
+os.makedirs(files_dir['excel_file'], exist_ok=True)
+
 calculation_threads = {}
 calculation_results = {}
-files_types = ['consumption_file', 'production_file', 'building_file',
-               'location_file', 'equipment_file', 'battery_file']
+#files_types = ['consumption_file', 'production_file', 'building_file',
+#               'location_file', 'equipment_file', 'battery_file', 'excel_file']
+
+
 
 #os.environ['FLASK_RUN_PORT'] = '8000'
 #os.environ['FLASK_RUN_HOST'] = "127.0.0.1"
@@ -57,9 +69,9 @@ files_types = ['consumption_file', 'production_file', 'building_file',
 app = Flask(__name__, template_folder='./template', static_folder='./static')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
 app.config['SECRET_KEY'] = '!secret_key!'
-os.makedirs(base_dir, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = base_dir
+app.config['UPLOAD_FOLDER'] = upload_dir
 app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
+
 main.init_components(base_dir)
 
 @app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
@@ -67,15 +79,17 @@ main.init_components(base_dir)
 def upload_files():
     uploaded = False
     if request.method == 'POST':
-        for ft in files_types:
+        for ft in files_dir.keys():
             if ft in request.files:
                 f = request.files[ft]
-                if len(secure_filename(f.filename)):
-                    print(f.filename)
-                    f.save(os.path.join(base_dir, ft.split('_')[0] + '.csv'))
+                filename = secure_filename(f.filename)
+                if len(filename):
+                    filename = os.path.join(files_dir[ft], filename)
+                    print(f'{f.filename} -> {filename}')
+                    f.save(filename) #ft.split('_')[0] + ['.xlsx' if 'excel' in ft else '.csv'][0]))
                     uploaded = True
         if uploaded:
-            main.init_components(base_dir)
+            main.init_components(base_dir, files_dir)
             print('Files uploaded successfully!')
         return index_page(files_uploaded='\nFiles uploaded successfully!\n', log=main.log)+'\n'
 

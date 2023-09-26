@@ -162,12 +162,12 @@
             </ul>
             <li><a href="javascript: tab_click('tab_infrastructure');" id="a_infrastructure">Infrastructure</a></li>
             <ul id="tab_infrastructure" style="display: none;" >
-                <li><a href="javascript: subtab_click('building_data');" id="a_building_data" class="here">Buildings</a></li>
+                <li><a href="javascript: subtab_click('building_data');" id="a_building_data">Buildings</a></li>
                 <li><a href="javascript: subtab_click('location_data');" id="a_location_data">Locations</a></li>
             </ul>
             <li><a href="javascript: tab_click('tab_equipment');" id="a_equipment">Equipment</a></li>
             <ul id="tab_equipment" style="display: none;">
-                <li><a href="javascript: subtab_click('equipment_data');" id="a_equipment_data" class="here">Photovoltaic</a></li>
+                <li><a href="javascript: subtab_click('equipment_data');" id="a_equipment_data">Photovoltaic</a></li>
                 <li><a href="javascript: subtab_click('battery_data');" id="a_battery_data">Batteries</a></li>
             </ul>
             <li><a href="javascript: tab_click('tab_uploading');" id="a_uploading">Upload</a></li>
@@ -203,6 +203,13 @@
             <table>
                 <form action="/api/v1.0/upload" method="POST" enctype="multipart/form-data">
                     <tr>
+                        <td><div>Components (xlsx file):</td><td><input type="file" name="excel_file" /><br /></div></td>
+                    <tr>
+                        <td><div>Consumption profile (json file):</td><td><input type="file" name="consumption_file" /><br /></div></td>
+                    <tr>
+                        <td><div>Production profile (json file):</td><td><input type="file" name="production_file" /><br /></div></td>
+                    <!--
+                    <tr>
                         <td><div>consumption_file: </td><td><input type="file" name="consumption_file" /><br /></div></td>
                     <tr>
                         <td><div>production_file:  </td><td><input type="file" name="production_file" /><br /></div></td>
@@ -214,6 +221,7 @@
                         <td><div>equipment_file:   </td><td><input type="file" name="equipment_file" /><br /></div></td>
                     <tr>
                         <td><div>battery_file:     </td><td><input type="file" name="battery_file" /><br /></div></td>
+                    -->                    
                     <tr>
                         <td></td>
                         <td><div>&nbsp;</div>

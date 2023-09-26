@@ -1,6 +1,20 @@
-import json, time, requests, uuid, os, datetime, jsonpickle, pickle
+import json, time, requests, uuid, os, datetime, jsonpickle, pickle, shutil, glob
 import pandas as pd#, numpy as np
 from pandas import json_normalize
+
+def save_pickle(data, file_name):
+    with open(file_name, 'wb') as f:
+        pickle.dump(data, f) 
+        
+def load_pickle(file_name):
+    with open(file_name, 'rb') as f:
+        return pickle.load(f)
+    
+def move_files(src_dir, dst_dir, mask='*.json'):
+    file_list = glob.glob(os.path.join(src_dir, mask))
+    for file_name in file_list:
+        if os.path.isfile(file_name):
+            shutil.move(file_name, os.path.join(dst_dir, os.path.basename(file_name)))
 
 def is_empty(x):
     if isinstance(x, (list, dict, str, pd.DataFrame, pd.Series)):
