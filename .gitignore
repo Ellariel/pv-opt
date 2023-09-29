@@ -37,6 +37,7 @@ gui.build
 gui.dist
 instance
 cache.pickle
+*.zip
 
 # Installer logs
 pip-log.txt
