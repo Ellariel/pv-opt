@@ -87,6 +87,7 @@ class PVGIS:
                 f"`mounting_system.fixed.azimuth.value` == {aspect} & "+\
                 f"`pv_module.technology` == '{pvtech}' & `pv_module.system_loss` == {loss}") if not is_empty(self.inputs) else None
         if is_empty(filtered) and request_if_none:
+            print(f'requesting data from PVGIS, lat: {lat}, lon: {lon}, angle: {angle}, aspect: {aspect}')
             pv_raw_data = request_PVGIS(angle=angle,
                                  aspect=aspect,
                                  pvtechchoice=pvtech,
@@ -106,6 +107,7 @@ class PVGIS:
             return _serie(pv_raw_data['outputs'], datatype=datatype)
         else:
             # filtered = filtered.sort_values(by='data.timestamp', ascending=False)
+            #print(f'getting data from cache, lat: {lat}, lon: {lon}, angle: {angle}, aspect: {aspect}')
             return _serie(self.from_storage(filtered.iloc[0]), datatype=datatype)      
         
 class Cache:

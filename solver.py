@@ -18,7 +18,8 @@ from utils import Cache, is_empty
 # max: Genossenschaft profit = (SPO * BP) + (SEC * CP) – IC - roof renting costs
 # min: building energy cost = (SEC * CP) + (SPU * SP) + roof renting costs
 
-def total_building_energy_costs(b, city_solar_energy_price=1, grid_selling_price=1.5):
+def total_building_energy_costs(b, city_solar_energy_price=1.0, grid_selling_price=1.5, **kwargs):
+    #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
     return b.total_solar_energy_consumption * city_solar_energy_price +\
            b.total_solar_energy_underproduction * grid_selling_price +\
            b.total_renting_costs
@@ -54,13 +55,21 @@ def _update_building(building, components, solution):
     return building
 
 class ConstraintSolver:
-    def __init__(self, building, possible_components, cache_storage='./'):
+    def __init__(self, building, possible_components, cache_storage='./', config={}):
         self.cached_solutions = Cache(storage=cache_storage)
         self.components = possible_components
         self.building = building
-        self.locations_combinations = list(itertools.permutations(range(0, len(self.components['location'])+1), 
-                                                                           len(self.components['location'])))
-        self.locations_combinations = list(set([tuple([i for i in j if i > 0]) for j in self.locations_combinations]))
+        self.config = config
+        
+        _filtered_locations = [k for k, v in self.components['location'].items() if v['building'] == self.building.uuid]
+        #self.locations_combinations = list(itertools.permutations(range(0, len(self.components['location'])+1), 
+        #                                                                   len(self.components['location'])))
+        #self.locations_combinations = list(set([tuple([i for i in j if i > 0]) for j in self.locations_combinations]))
+        self.locations_combinations = list(itertools.permutations(range(0, len(_filtered_locations)+1), 
+                                                                           len(_filtered_locations)))
+        self.locations_combinations = list(set([tuple([_filtered_locations[i-1] for i in j if i > 0]) for j in self.locations_combinations]))
+        #print(self.locations_combinations)
+        
         self.solutions = []
         self.problem = constraint.Problem()
         #print(self.locations_combinations)
@@ -90,7 +99,7 @@ class ConstraintSolver:
     def get_cached_solution(self, A, B, C, D, E):
         def _calc():
             _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E))
-            return total_building_energy_costs(self.building), self.building.get_total_energy_storage_needed()
+            return total_building_energy_costs(self.building, **self.config), self.building.get_total_energy_storage_needed()
         return self.cached_solutions.get_cached_solution((A, B, C), _calc)
 
     def calc_solution_costs(self, solution):
@@ -122,7 +131,7 @@ class ConstraintSolver:
         data_key['uuid'] = uuid if uuid != None else uuid4().hex
         data_key['selected'] = 1 if selected else 0
         data_key['stored'] = uuid4().hex
-        data_key['solution'] = solution
+        data_key['solution'] = str(solution)
         data_key['building'] = building.uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         self.to_storage(data_key['stored'], building, storage=storage)

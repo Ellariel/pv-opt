@@ -33,6 +33,7 @@ Equipment = dict(
 )
 Location = dict(
         uuid = None,
+        building = 1,
         angle = 0,
         aspect = 0,
         size_m = (10, 10),

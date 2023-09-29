@@ -74,7 +74,28 @@ app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
 
 main.init_components(base_dir)
 
-@app.route('/api/v1.0/upload', methods = ['GET', 'POST'])
+@app.route('/')
+#@auth.login_required
+def index_page(**args):
+    args.update({'log': main.log+'\n'})
+    return render_template('index.html', **args)
+
+@app.route('/api/v1.0/update')#, methods=['GET', 'POST'])
+#@auth.login_required
+def update_config():
+    try:
+        _dict = dict(request.values)
+        if len(_dict):
+            for k, v in main.config.items():
+                if k in _dict:
+                    _dict[k] = type(v)(_dict[k])  
+            print(f'config update request: {main.config} -> {_dict}')         
+            main.config.update(_dict)
+        return jsonify({**main.config, 'exception': ''})
+    except Exception as e:
+        return jsonify({**main.config, 'exception': str(e)})
+        
+@app.route('/api/v1.0/upload', methods=['GET', 'POST'])
 #@auth.login_required
 def upload_files():
     uploaded = False
@@ -92,12 +113,6 @@ def upload_files():
             main.init_components(base_dir, files_dir)
             print('Files uploaded successfully!')
         return index_page(files_uploaded='\nFiles uploaded successfully!\n', log=main.log)+'\n'
-
-@app.route('/')
-#@auth.login_required
-def index_page(**args):
-    args.update({'log': main.log+'\n'})
-    return render_template('index.html', **args)
 
 @app.route('/api/v1.0/calculate')
 #@auth.login_required

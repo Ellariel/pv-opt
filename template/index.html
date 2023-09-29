@@ -86,6 +86,23 @@
                     }
                 });
             }
+            function config_update(update=false) {
+                if (update == true) {
+                    value = '?city_solar_energy_price='+document.getElementById('city_solar_energy_price').value+'&grid_selling_price='+document.getElementById('grid_selling_price').value+'&top_limit='+document.getElementById('top_limit').value;
+                    $.get('/api/v1.0/update'+value, function(req) {
+                        if (req.exception == '') {
+                        }
+                    });  
+                } else {
+                    $.get('/api/v1.0/update', function(req) {
+                        if (req.exception == '') {
+                            document.getElementById('city_solar_energy_price').value = req.city_solar_energy_price;
+                            document.getElementById('grid_selling_price').value = req.grid_selling_price;
+                            document.getElementById('top_limit').value = req.top_limit;
+                        }
+                    });
+                }
+            }
             function hide(id){
                     e = document.getElementById(id)
                     if (e != null) {e.style = "display: none;"}
@@ -130,6 +147,7 @@
                 if (!document.getElementById('a_'+tab_id).classList.contains('here')) {
                     if (tab_id != 'uploading' & tab_id != 'calculation'){
                     request_table(tab_id);
+                    config_update();
                     }
                 }
                 document.getElementById('a_calculation').classList.remove('here');
@@ -148,11 +166,13 @@
                 hide('uploading_div');
                 show(tab_id+'_div');
             }
+            function do_it_once() {
+                config_update();
+            }
 
 	</script>
     </head>
-    <body>
-
+    <body onload="javascript: do_it_once()">
 
         <ul id="globalnav">
             <li><a href="javascript: tab_click('tab_solutions');" id="a_solutions" class="here">Solutions</a></li>
@@ -192,7 +212,20 @@
                         </td>
                     </tr>
                     <tr>
-                        <td><div id="task_dv">task_id={{ task_id }}</div>
+                        <td><div id="task_dv">task_id = {{ task_id }}</div>
+                            <div id="config">
+                                <table>
+                                        <tr>
+                                            <td><div>city_solar_energy_price:</td><td><input type="text" name="city_solar_energy_price" id="city_solar_energy_price"/><br /></div></td>
+                                        <tr>
+                                            <td><div>grid_selling_price:</td><td><input type="text" name="grid_selling_price" id="grid_selling_price"/><br /></div></td>
+                                        <tr>
+                                            <td><div>top_limit:</td><td><input type="text" name="top_limit" id="top_limit"/><br /></div></td>
+                                        <tr>
+                                            <td><div>
+                                                <button type="button" onclick="javascript:config_update(true);" style="width: 100%">update config</button></td> 
+                                    </table>
+                            </div>
                             <button type="button" onclick="javascript:calculate();" id="calc_button" style="width: 100%">calculate</button>
                         </td>
                     </tr>

@@ -1,9 +1,10 @@
-python -m nuitka gui.py --standalone
-copy consumption gui.dist\
-copy production gui.dist\
-copy pv_outputs gui.dist\
-copy solution gui.dist\
-copy static gui.dist\
-copy template gui.dist\
-copy uploaded gui.dist\
-copy pv_inputs.csv gui.dist\
+python -m nuitka gui.py --standalone --include-package=openpyxl
+xcopy consumption gui.dist\consumption /i /e /y
+xcopy production gui.dist\production /i /e /y
+xcopy pv_outputs gui.dist\pv_outputs /i /e /y
+xcopy solution gui.dist\solution /i /e /y
+xcopy static gui.dist\static /i /e /y
+xcopy template gui.dist\template /i /e /y
+xcopy /y components.pickle gui.dist
+xcopy /y components.xlsx gui.dist
+xcopy /y pv_inputs.csv gui.dist

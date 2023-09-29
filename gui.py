@@ -1,6 +1,7 @@
 from flaskwebgui import FlaskUI
 #from nicegui import ui
 import app
+#import openpyxl
 #from app import app
 
 #ui.label("Hello Super NiceGUI!")
@@ -15,6 +16,6 @@ ui = FlaskUI(app=app.app,
             #server_kwargs={"dark": True, "reload": False, "show": False, "port": 5003},
             #host="127.0.0.1:5003",
             #port=5003,
-            width=795,
-            height=450,
+            width=800,
+            height=600,
         ).run()
