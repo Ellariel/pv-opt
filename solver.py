@@ -79,7 +79,7 @@ class ConstraintSolver:
         self.problem.addVariable('C', range(1, 10)) # equipment count
         self.problem.addVariable('E', range(0, 10)) # battery count
         self.problem.addConstraint(self.equipment_square_constraint, "ABC")
-        self.problem.addConstraint(self.battery_voltage_constraint, "BD")
+        #self.problem.addConstraint(self.battery_voltage_constraint, "BD")
         self.problem.addConstraint(self.battery_capacity_constraint, "ABCDE")        
         
     def equipment_square_constraint(self, A, B, C):

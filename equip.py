@@ -14,9 +14,9 @@ Battery = dict(
         uuid = None,
         battery_count = 1,
         type = 'LiFePO4',
-        battery_capacity_Ah = 100,
+        #battery_capacity_Ah = 100,
         battery_energy_Wh = 4800,
-        battery_voltage = 48,
+        #battery_voltage = 48,
         battery_discharge_factor = 0.7,
         battery_price_per_Wh = 9.738,
 )
@@ -29,13 +29,13 @@ Equipment = dict(
         pv_watt_peak = 500,
         pv_price_per_Wp = 0.90,
         pv_loss = 14,
-        pv_voltage = 48,
+        #pv_voltage = 48,
 )
 Location = dict(
         uuid = None,
         building = 1,
-        angle = 0,
-        aspect = 0,
+        slope = 0,
+        azimuth = 0,
         size_m = (10, 10),
         price_per_sqm = 1,
         lat = 52.373,
@@ -232,8 +232,8 @@ class Building:
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
 
 def _calc_equipment_production(loc, eq):
-    nominal_pv = pv_gis.get_nominal_pv(angle=loc['angle'], # Watt per 1 kWp
-                             aspect=loc['aspect'], 
+    nominal_pv = pv_gis.get_nominal_pv(slope=loc['slope'], # Watt per 1 kWp
+                             azimuth=loc['azimuth'], 
                              pvtech=eq['type'], 
                              loss=eq['pv_loss'], 
                              lat=loc['lat'], 

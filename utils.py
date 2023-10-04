@@ -39,7 +39,7 @@ def _serie(x, datatype='hourly', name='production'):
     v['timestamp'] = pd.DatetimeIndex(v['timestamp'])
     return v.set_index('timestamp')
 
-def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss=14, lat=52.373, lon=9.738, startyear=2016, endyear=2016, timeout=3):
+def request_PVGIS(datatype='hourly', pvtechchoice='CIS', slope=0, azimuth=0, loss=14, lat=52.373, lon=9.738, startyear=2016, endyear=2016, timeout=3):
     # https://re.jrc.ec.europa.eu/pvg_tools/en/tools.html
     # https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/getting-started-pvgis/api-non-interactive-service_en
     # pvtechchoice	"crystSi", "CIS", "CdTe" and "Unknown".
@@ -67,7 +67,7 @@ def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss
     
     if datatype=='hourly':
       req = r"https://re.jrc.ec.europa.eu/api/seriescalc?outputformat=json&pvcalculation=1&peakpower=1&mountingplace=building"+\
-            f"&lat={lat}&lon={lon}&pvtechchoice={pvtechchoice}&loss={loss}&angle={angle}&aspect={aspect}"+\
+            f"&lat={lat}&lon={lon}&pvtechchoice={pvtechchoice}&loss={loss}&angle={slope}&aspect={azimuth}"+\
             f"&raddatabase=PVGIS-SARAH&startyear={startyear}&endyear={endyear}"
     else:
       raise NotImplementedError(datatype)
@@ -98,18 +98,18 @@ class PVGIS:
         self.inputs = pd.concat([self.inputs, data_key], ignore_index=True)
         self.inputs.to_csv(self.inputs_storage, sep=';', index=False)    
     
-    def get_nominal_pv(self, angle=0, aspect=0, pvtech='CIS', loss=14, lat=52.373, lon=9.738, datayear=2016, datatype='hourly', request_if_none=True, save_if_none=True):
+    def get_nominal_pv(self, slope=0, azimuth=0, pvtech='CIS', loss=14, lat=52.373, lon=9.738, datayear=2016, datatype='hourly', request_if_none=True, save_if_none=True):
         # Watt per 1 kWp {"P": {"description": "PV system power", "units": "W"}
         filtered = self.inputs.query(
                 f"`location.latitude` == {lat} & `location.longitude` == {lon} & "+\
                 f"`data.type` == '{datatype}' & `data.year` == {datayear} & "+\
-                f"`mounting_system.fixed.slope.value` == {angle} & "+\
-                f"`mounting_system.fixed.azimuth.value` == {aspect} & "+\
+                f"`mounting_system.fixed.slope.value` == {slope} & "+\
+                f"`mounting_system.fixed.azimuth.value` == {azimuth} & "+\
                 f"`pv_module.technology` == '{pvtech}' & `pv_module.system_loss` == {loss}") if not is_empty(self.inputs) else None
         if is_empty(filtered) and request_if_none:
-            print(f'requesting data from PVGIS, lat: {lat}, lon: {lon}, angle: {angle}, aspect: {aspect}')
-            pv_raw_data = request_PVGIS(angle=angle,
-                                 aspect=aspect,
+            print(f'requesting data from PVGIS, lat: {lat}, lon: {lon}, slope: {slope}, azimuth: {azimuth}')
+            pv_raw_data = request_PVGIS(slope=slope,
+                                 azimuth=azimuth,
                                  pvtechchoice=pvtech,
                                  loss=loss,
                                  lat=lat,

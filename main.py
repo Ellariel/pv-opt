@@ -155,7 +155,7 @@ def calculate(base_dir):
                 
     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
     #data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
-
+'''
 def _init_components(base_dir):
     global components, building_objects, data_tables
     
@@ -243,7 +243,7 @@ def _calculate(base_dir):
 
 if __name__ == "__main__":
     pass
-    
+'''
 
 
 
@@ -299,7 +299,7 @@ if __name__ == "__main__":
     
     #sys.exit()
 
-    '''
+'''
     print(components)
     bt1 = Battery.copy()
     bt1['uuid'] = 1
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     buildings.append(building)
 
 
-    '''
+'''
  
     
     #sys.exit()
