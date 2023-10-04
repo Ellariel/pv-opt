@@ -45,6 +45,26 @@ def request_PVGIS(datatype='hourly', pvtechchoice='CIS', angle=0, aspect=0, loss
     # pvtechchoice	"crystSi", "CIS", "CdTe" and "Unknown".
     # aspect	(azimuth) angle of the (fixed) plane, 0=south, 90=west, -90=east. Not relevant for tracking planes.
     # {"P": {"description": "PV system power", "units": "W"}
+    
+    '''
+    Inclination angle or slope
+    This is the angle of the PV modules from the horizontal plane, for a fixed (non-tracking) mounting.
+    For some applications the slope and orientation angles will already be known, 
+    for instance if the PV modules are to be built into an existing roof. However, 
+    if you have the possibility to choose the slope and/or azimuth (orientation), 
+    this application can also calculate for you the optimal values for slope and orientation 
+    (assuming fixed angles for the entire year).
+    
+    Orientation angle or azimuth
+    The azimuth, or orientation, is the angle of the PV modules 
+    relative to the direction due South. -90° is East, 0° is South and 90° is West.
+    For some applications the slope and azimuth angles will already be known, 
+    for instance if the PV modules are to be built into an existing roof. 
+    However, if you have the possibility to choose the inclination and/or orientation, 
+    this application can also calculate for you the optimal values for inclination 
+    and orientation (assuming fixed angles for the entire year).
+    '''   
+    
     if datatype=='hourly':
       req = r"https://re.jrc.ec.europa.eu/api/seriescalc?outputformat=json&pvcalculation=1&peakpower=1&mountingplace=building"+\
             f"&lat={lat}&lon={lon}&pvtechchoice={pvtechchoice}&loss={loss}&angle={angle}&aspect={aspect}"+\
