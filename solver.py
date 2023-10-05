@@ -84,8 +84,11 @@ class ConstraintSolver:
         
     def equipment_square_constraint(self, A, B, C):
         loc, eq, eq_count = _locations(A, self.components['location']), self.components['equipment'][B], C
-        total_square_available = sum([l['size_m'][0] * l['size_m'][1] * 10 ** 6 for l in loc])
-        return eq['pv_size_mm'][0] * eq['pv_size_mm'][1] * eq_count < total_square_available
+        max_count = sum([min(np.floor(l['size_m'][0] * 1000 / eq['pv_size_mm'][0]), np.floor(l['size_m'][1] * 1000 / eq['pv_size_mm'][1])) for l in loc])
+        return eq_count <= max_count        
+        #total_square_available = sum([l['size_m'][0] * l['size_m'][1] * 10 ** 6 for l in loc])
+        #return eq['pv_size_mm'][0] * eq['pv_size_mm'][1] * eq_count < total_square_available
+        
 
     def battery_voltage_constraint(self, B, D):
         eq, bt = self.components['equipment'][B], self.components['battery'][D]
