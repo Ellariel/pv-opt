@@ -6,7 +6,7 @@ from ast import literal_eval
 
 import equip
 #from equip import Building, Equipment, Location, Battery
-from utils import save_pickle, load_pickle, move_files
+from utils import save_pickle, load_pickle, move_files, make_figure
 from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 base_dir = './'
@@ -28,6 +28,7 @@ data_tables = {'location_data': None,
 consumption_dir = os.path.join(base_dir, 'consumption')
 production_dir = os.path.join(base_dir, 'production')
 solution_dir = os.path.join(base_dir, 'solution')
+
 os.makedirs(consumption_dir, exist_ok=True)
 os.makedirs(production_dir, exist_ok=True)
 os.makedirs(solution_dir, exist_ok=True)
@@ -89,9 +90,10 @@ def init_components(base_dir, upload_dir=None):
                 try:    
                     print(f'attempt to load {k} from {excel_file}')      
                     df = pd.read_excel(excel_file, sheet_name=k.split('_')[0], converters={'size_m': literal_eval,
-                                                                                        'pv_size_mm': literal_eval,
+                                                                                           'pv_size_mm': literal_eval,
+                                                                                           'uuid': str,
+                                                                                           'building': str,
                     })
-                                                                                        #'solution': literal_eval})
                     df.index = range(1, len(df)+1)
                     #print(df.info())
                     #print(df)
@@ -112,7 +114,7 @@ def init_components(base_dir, upload_dir=None):
     _print(f"    stored solutions: {len(data_tables['solution_data'])}")
     
     for idx, item in data_tables['building_data'].iterrows():
-        try:        
+        #try:        
             b = equip.Building(**item.to_dict())
             b.load_production(data_tables['production_data'], storage=production_dir)
             b.load_consumption(data_tables['consumption_data'], storage=consumption_dir)
@@ -122,8 +124,8 @@ def init_components(base_dir, upload_dir=None):
                 b._locations.append(loc)
             b.updated(update_production=False)
             building_objects.append(b)
-        except Exception as e:
-            print(f'error loading building {b.uuid}: {str(e)}')
+        #except Exception as e:
+        #    print(f'error loading building {b.uuid}: {str(e)}')
     
 def calculate(base_dir):   
     global components, building_objects, data_tables

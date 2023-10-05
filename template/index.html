@@ -76,16 +76,35 @@
                 });
             }
             function request_table(table_name) {
+                function add_link(idx){
+                                        item = $(this).find('td').first();
+                                        item.html(item.text() + '&nbsp;&nbsp;<a href="javascript: new_imagetab(\''+item.text()+'\', \'production\');">P</a>&nbsp;&nbsp;<a href="javascript: new_imagetab(\''+item.text()+'\', \'consumption\');">C</a>');
+                                        //item.tex = '<a>' + item.innerHTML + '</a>';
+                                        //$(this).append('<div style="display:inline-block;float:left;position:absolute;"><a href="link'+i+'" >Button '+item.text()+'</a></div>');
+                            }
                 $.get('/api/v1.0/table/' + table_name, function(req) {
                     if (req.exception == '') {
                         if ($.fn.dataTable.isDataTable('#'+table_name)) {
-                            table = $('#'+table_name).DataTable({data: req.data, retrieve: true, searching: false});
+                            table = $('#'+table_name).DataTable({data: req.data, retrieve: true, searching: false,
+                            "fnDrawCallback": function(oSettings) {
+                                if (table_name == 'building_data') {
+                                    $('#'+table_name+' tbody').find('tr').each(add_link);
+                                }
+                            }
+                        });
                         } else {
-                            table = new DataTable('#'+table_name, {columns: req.cols, data: req.data, searching: false});
+                            table = new DataTable('#'+table_name, {columns: req.cols, data: req.data, searching: false,
+                            "fnDrawCallback": function(oSettings) {
+                                if (table_name == 'building_data') {
+                                    $('#'+table_name+' tbody').find('tr').each(add_link);
+                                }
+                            }
+                        });
                         }
                     }
                 });
             }
+            
             function config_update(update=false) {
                 if (update == true) {
                     value = '?city_solar_energy_price='+document.getElementById('city_solar_energy_price').value+'&grid_selling_price='+document.getElementById('grid_selling_price').value+'&top_limit='+document.getElementById('top_limit').value;
@@ -166,9 +185,26 @@
                 hide('uploading_div');
                 show(tab_id+'_div');
             }
+            function new_imagetab(building_uuid, data_type) {
+                $.get('/api/v1.0/figure/'+building_uuid+'/'+data_type, function(req) {
+                        if (req.exception == '') {
+                            var img = new Image();
+                            img.src = 'data:image/png;base64,' + req.image_url;
+                            //alert(img.src)
+                            var w = window.open("",'_blank');
+                            w.document.write('<title>'+data_type+', uuid: '+building_uuid+'</title>'+img.outerHTML);
+                            //w.document.close();
+                        } else {
+                            _print(req.exception)
+                        }
+                    });
+            }
             function do_it_once() {
                 config_update();
+                
             }
+
+ 
 
 	</script>
     </head>

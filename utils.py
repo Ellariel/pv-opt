@@ -1,6 +1,32 @@
 import json, time, requests, uuid, os, datetime, jsonpickle, pickle, shutil, glob
 import pandas as pd#, numpy as np
 from pandas import json_normalize
+import matplotlib.pyplot as plt
+import matplotlib.ticker as plticker
+import hashlib
+import cv2
+import base64
+
+def get_hash(obj):
+    return hashlib.md5((str(obj.index) + str(obj.values)).encode()).hexdigest()
+
+def get_encoded_img(image_path):
+    img = cv2.imread(image_path)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #img = cv2.resize(img, (100, 100))
+    _, buf = cv2.imencode('.png', img)
+    image = base64.b64encode(buf).decode('ascii')
+    return image
+
+def make_figure(data, file_name):
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+    data.plot(ax=ax)
+    #loc = plticker.MultipleLocator(base=30.0)
+    #ax.xaxis.set_major_locator(loc)
+    plt.xticks(rotation=90)
+    plt.tight_layout()    
+    fig.savefig(file_name)
+    plt.close(fig)
 
 def save_pickle(data, file_name):
     with open(file_name, 'wb') as f:

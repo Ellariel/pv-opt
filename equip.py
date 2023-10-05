@@ -114,8 +114,8 @@ class Building:
                 json.dump(data.to_json(), fp)
 
     def load_production(self, production_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
-        query = f"`building` == {self.uuid if building == None else building}"
-        query += f" & `uuid` == {uuid}" if uuid != None else ''
+        query = f"`building` == '{self.uuid if building == None else building}'"
+        query += f" & `uuid` == '{uuid}'" if uuid != None else ''
         query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
         query += f" & `year` == {year}" if year != None else ''
         filtered = production_data.query(query)
@@ -135,8 +135,8 @@ class Building:
         return pd.concat([production_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
     
     def load_consumption(self, consumption_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
-        query = f"`building` == {self.uuid if building == None else building}"
-        query += f" & `uuid` == {uuid}" if uuid != None else ''
+        query = f"`building` == '{self.uuid if building == None else building}'"
+        query += f" & `uuid` == '{uuid}'" if uuid != None else ''
         query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
         query += f" & `year` == {year}" if year != None else ''
         filtered = consumption_data.query(query)

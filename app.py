@@ -13,6 +13,8 @@ import random
 import threading, os
 #import time
 #from main import *
+
+from utils import get_hash, get_encoded_img, make_figure
 import main
 
 class CalculationThread(threading.Thread):
@@ -55,6 +57,9 @@ os.makedirs(upload_dir, exist_ok=True)
 os.makedirs(files_dir['consumption_file'], exist_ok=True)
 os.makedirs(files_dir['production_file'], exist_ok=True)
 os.makedirs(files_dir['excel_file'], exist_ok=True)
+
+figures_dir = os.path.join(base_dir, 'static/figures')
+os.makedirs(figures_dir, exist_ok=True)
 
 calculation_threads = {}
 calculation_results = {}
@@ -166,6 +171,23 @@ def api_table(table_name):
     else:
         return jsonify({'table_name': table_name, 'data': '', 'cols': '', 'exception': 'No such a table name!'})
 
+@app.route('/api/v1.0/figure/<string:building_uuid>/<string:data_type>')
+#@auth.login_required
+def api_figure(building_uuid, data_type):
+    #print(data_type, building_uuid)
+    try:
+        for b in main.building_objects:
+            #print(b.uuid, building_uuid)
+            if b.uuid == building_uuid:
+                d = b.consumption if data_type == 'consumption' else b.production
+                file_name = os.path.join(figures_dir, get_hash(d)+'_'+data_type+'.png')
+                if not os.path.exists(file_name):
+                    make_figure(d, file_name)
+                return jsonify({'image_url': get_encoded_img(file_name), 'exception': ''})
+        return jsonify({'image_url': '', 'exception': 'Image error: no matched building uuid!'})
+    except Exception as e:
+        jsonify({'image_url': '', 'exception': f'Image error: {str(e)}'})
+
 #########################################################################
 
 if __name__ == "__main__":
@@ -173,6 +195,30 @@ if __name__ == "__main__":
     
 
 '''
+        
+        <script>    
+const canvasMask = document.getElementById('myCanvas');
+const ctxcanvasMask = canvasMask.getContext('2d');
+
+document.getElementById("getMask").addEventListener('click', () => {
+
+    fetch('http://127.0.0.1:5000/getImage')
+    .then(res => res.json())
+    .then(data => {
+        var img = new Image();
+        img.src = 'data:image/jpeg;base64,' + data.image_url;
+        img.onload = () => ctxcanvasMask.drawImage(img, 0, 0);
+    })
+    .catch(err => alert("PROBLEM\\n\\n" + err));
+    
+});
+</script>
+
+
+
+
+
+
 
 login_manager = LoginManager()
 login_manager.init_app(app)
