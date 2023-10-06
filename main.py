@@ -47,11 +47,23 @@ _rename = {'A': 'location_uuid',
            'D': 'battery_uuid',
            'E': 'battery_count',
            }
+
 def _ren(s):
+    global components
+    def _match(k, v):
+        if 'uuid' in k:
+            k = k.split('_')[0]
+            if isinstance(v, (int, str)):
+                return components[k][v]['uuid']
+            elif isinstance(v, tuple):
+                return [components[k][i]['uuid'] for i in v]
+        return v
     _r = {}
     for k, v in s.items():
-        if k in _rename:    
-            _r.update({_rename[k]: v})
+        if k in _rename:   
+            k = _rename[k]
+            v = _match(k, v)
+            _r.update({k: v})
     return _r
         
 
@@ -131,7 +143,7 @@ def calculate(base_dir):
     global components, building_objects, data_tables
     
     for building in building_objects:
-        try:
+        #try:
             #print_building(building)
             building._erase_equipment()
             _print(f'building {building.uuid} solving...')
@@ -152,8 +164,8 @@ def calculate(base_dir):
                     print_building(building)
                 else:
                     _print(f'    {i+1}) {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}')            
-        except Exception as e:
-            print(f'error calculating building {building.uuid}: {str(e)}')
+        #except Exception as e:
+        #    print(f'error calculating building {building.uuid}: {str(e)}')
                 
     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
     #data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
