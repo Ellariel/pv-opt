@@ -36,14 +36,17 @@ Solution = dict(
 def _locations(combination, locations):
     return [locations[i] for i in combination if i in locations]    
 
-def _update_building(building, components, solution):
+def _update_building(building, components, solution, use_roof_sq=False):
     A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
     loc, eq, eq_count, bt, bt_count = copy.deepcopy(_locations(A, components['location'])), components['equipment'][B], C, copy.deepcopy(components['battery'][D]), E
     eq_square_needed = eq['pv_size_mm'][0] * eq['pv_size_mm'][1]
     for l in loc:
         l['_equipment'] = []
         if eq_count > 0:
-            total_square_available = l['size_m'][0] * l['size_m'][1] * 10 ** 6
+            if use_roof_sq:
+                total_square_available = l['size_sqm'] * 10 ** 6
+            else:
+                total_square_available = l['size_WxHm'][0] * l['size_WxHm'][1] * 10 ** 6
             _eq = eq.copy()
             _eq['pv_count'] = min(np.ceil(total_square_available / eq_square_needed), eq_count)
             eq_count -= _eq['pv_count']
@@ -61,13 +64,24 @@ class ConstraintSolver:
         self.building = building
         self.config = config
         
-        _filtered_locations = [k for k, v in self.components['location'].items() if v['building'] == self.building.uuid]
+        _filtered_locations = [k for k, v in self.components['location'].items() if v['building_uuid'] == self.building.uuid]
         #self.locations_combinations = list(itertools.permutations(range(0, len(self.components['location'])+1), 
         #                                                                   len(self.components['location'])))
         #self.locations_combinations = list(set([tuple([i for i in j if i > 0]) for j in self.locations_combinations]))
-        self.locations_combinations = list(itertools.permutations(range(0, len(_filtered_locations)+1), 
-                                                                           len(_filtered_locations)))
-        self.locations_combinations = list(set([tuple([_filtered_locations[i-1] for i in j if i > 0]) for j in self.locations_combinations]))
+        self.locations_combinations = list(itertools.combinations_with_replacement(range(0, len(_filtered_locations)+1), #combinations #permutations
+                                                                           len(_filtered_locations)))       
+        #print(self.locations_combinations)
+        #self.locations_combinations = list(set([tuple(set([_filtered_locations[i-1] for i in j if i > 0])) for j in self.locations_combinations]))
+        
+        _combinations = set()
+        for j in self.locations_combinations:
+            c = []
+            for i in j:
+                if i > 0 and i not in c:
+                    c += [i]
+            if len(c):
+                _combinations.add(tuple([_filtered_locations[i-1] for i in c]))
+        self.locations_combinations = list(_combinations)
         #print(self.locations_combinations)
         
         self.solutions = []
@@ -84,12 +98,11 @@ class ConstraintSolver:
         
     def equipment_square_constraint(self, A, B, C):
         loc, eq, eq_count = _locations(A, self.components['location']), self.components['equipment'][B], C
-        max_count = sum([min(np.floor(l['size_m'][0] * 1000 / eq['pv_size_mm'][0]), np.floor(l['size_m'][1] * 1000 / eq['pv_size_mm'][1])) for l in loc])
-        #print(max_count, eq_count)
-        return eq_count <= max_count        
-        #total_square_available = sum([l['size_m'][0] * l['size_m'][1] * 10 ** 6 for l in loc])
-        #return eq['pv_size_mm'][0] * eq['pv_size_mm'][1] * eq_count < total_square_available
-        
+        if self.config['use_roof_sq']: 
+            max_count = np.floor(sum([l['size_sqm'] * 10 ** 6 for l in loc]) / (eq['pv_size_mm'][0] * eq['pv_size_mm'][1]))
+        else:
+            max_count = sum([min(np.floor(l['size_WxHm'][0] * 1000 / eq['pv_size_mm'][0]), np.floor(l['size_WxHm'][1] * 1000 / eq['pv_size_mm'][1])) for l in loc])
+        return eq_count <= max_count       
 
     def battery_voltage_constraint(self, B, D):
         eq, bt = self.components['equipment'][B], self.components['battery'][D]
@@ -102,7 +115,7 @@ class ConstraintSolver:
 
     def get_cached_solution(self, A, B, C, D, E):
         def _calc():
-            _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E))
+            _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E), use_roof_sq=self.config['use_roof_sq'])
             return total_building_energy_costs(self.building, **self.config), self.building.get_total_energy_storage_needed()
         return self.cached_solutions.get_cached_solution((A, B, C), _calc)
 
@@ -136,13 +149,13 @@ class ConstraintSolver:
         data_key['selected'] = 1 if selected else 0
         data_key['stored'] = uuid4().hex
         data_key['solution'] = str(solution)
-        data_key['building'] = building.uuid
+        data_key['building_uuid'] = building.uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         self.to_storage(data_key['stored'], building, storage=storage)
         return pd.concat([solution_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
     
     def load_solution(self, solution_data, building, selected_only=False, timestamp=None, uuid=None, storage='./'):
-        query = f"`building` == {building.uuid}"
+        query = f"`building_uuid` == {building.uuid}"
         query += f" & `uuid` == {uuid}" if uuid != None else ''
         query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
         query += f" & `selected` == 1" if selected_only else ''

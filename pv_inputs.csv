@@ -5,3 +5,9 @@ location.latitude;location.longitude;location.elevation;meteo_data.radiation_db;
 52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;5;False;0;False;building-integrated;CIS;1.0;14.0;ed6f82cdb1e14444a16297e4414967b3;2016;hourly;1696588227.6644647
 52.373;9.737;61.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;5;False;0;False;building-integrated;CIS;1.0;14.0;4ba438487e57471dbf5d79775e77f2d0;2016;hourly;1696588281.633391
 52.373;9.737;61.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;0;False;0;False;building-integrated;CIS;1.0;14.0;0de4f4bc8f2b4ad69daeeb4511edb5f2;2016;hourly;1696588332.989127
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;37;False;0;False;building-integrated;CIS;1.0;14.0;5c52f40bcae04677b2713347ca4b04d7;2016;hourly;1696875974.801844
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;36;False;0;False;building-integrated;CIS;1.0;14.0;e57f2fb1f0a64649b77a690dda108904;2016;hourly;1696876026.2805443
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;15;False;0;False;building-integrated;CIS;1.0;14.0;ba4ab029b1f842ae9d4293e654654aa6;2016;hourly;1696876365.1564426
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;18;False;0;False;building-integrated;CIS;1.0;14.0;32db855ceffb440ba28fe76b73a60021;2016;hourly;1696876692.1699555
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;19;False;0;False;building-integrated;CIS;1.0;14.0;df0a68ab302245b1b093910b8e82acc1;2016;hourly;1696876745.864387
+52.373;9.738;63.0;PVGIS-SARAH;ERA-Interim;2016;2016;True;;DEM-calculated;21;False;0;False;building-integrated;CIS;1.0;14.0;18c9ecf0af2d41c98a8699eeb4f1dd14;2016;hourly;1696878942.2393868

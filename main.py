@@ -14,6 +14,7 @@ config = {'city_solar_energy_price': 1.0,
             'grid_selling_price': 2.0,
             'top_limit': 5,
             'max_equipment_count': 10,
+            'use_roof_sq' : True,
         }
 components = {}
 building_objects = []
@@ -102,10 +103,10 @@ def init_components(base_dir, upload_dir=None):
             for k in data_tables.keys():  
                 try:    
                     print(f'attempt to load {k} from {excel_file}')      
-                    df = pd.read_excel(excel_file, sheet_name=k.split('_')[0], converters={'size_m': literal_eval,
+                    df = pd.read_excel(excel_file, sheet_name=k.split('_')[0], converters={'size_WxHm': literal_eval,
                                                                                            'pv_size_mm': literal_eval,
                                                                                            'uuid': str,
-                                                                                           'building': str,
+                                                                                           'building_uuid': str,
                     })
                     df.index = range(1, len(df)+1)
                     #print(df.info())
@@ -128,18 +129,18 @@ def init_components(base_dir, upload_dir=None):
     _print(f"    stored solutions: {len(data_tables['solution_data'])}")
     
     for idx, item in data_tables['building_data'].iterrows():
-        #try:        
+        try:        
             b = equip.Building(**item.to_dict())
             b.load_production(data_tables['production_data'], storage=production_dir)
             b.load_consumption(data_tables['consumption_data'], storage=consumption_dir)
-            for idx, item in data_tables['location_data'][data_tables['location_data']['building'] == b.uuid].iterrows():
+            for idx, item in data_tables['location_data'][data_tables['location_data']['building_uuid'] == b.uuid].iterrows():
                 loc = equip.Location.copy()
                 loc.update(item.to_dict())
                 b._locations.append(loc)
             b.updated(update_production=False)
             building_objects.append(b)
-        #except Exception as e:
-        #    print(f'error loading building {b.uuid}: {str(e)}')
+        except Exception as e:
+            print(f'error loading building {b.uuid}: {str(e)}')
     
 def calculate(base_dir):   
     global components, building_objects, data_tables
@@ -161,7 +162,7 @@ def calculate(base_dir):
             for i, s in enumerate(solutions):
                 if i == 0:
                     _print(f"    {i+1}) optimal solution for building {building.uuid}: {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}")
-                    _update_building(building, components, s)
+                    _update_building(building, components, s, use_roof_sq=config['use_roof_sq'])
                     data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, _ren(s), storage=solution_dir)
                     print_building(building)
                 else:

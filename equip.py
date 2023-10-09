@@ -33,27 +33,28 @@ Equipment = dict(
 )
 Location = dict(
         uuid = None,
-        building = 1,
+        building_uuid = 1,
         slope = 0,
         azimuth = 0,
-        size_m = (10, 10),
+        size_WxHm = (10, 10),
+        size_sqm = 100,
         price_per_sqm = 1,
-        lat = 52.373,
-        lon = 9.738,
+        #lat = 52.373,
+        #lon = 9.738,
         _equipment = []
 )
 Production = dict(
         uuid = None,
         timestamp = 1692989661.8293242,
         year = 2022,
-        building = 1,
+        building_uuid = 1,
         production = '5c75deb8d33045cd86bb3ee9b7e98c25'
 )
 Consumption = dict(
         uuid = None,
         timestamp = 1692989661.8293242,
         year = 2022,
-        building = 1,
+        building_uuid = 1,
         consumption = '5c75deb8d33045cd86bb3ee9b7e98c25'
 )
 
@@ -113,8 +114,8 @@ class Building:
             with open(file_name+'.json', 'w') as fp:
                 json.dump(data.to_json(), fp)
 
-    def load_production(self, production_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
-        query = f"`building` == '{self.uuid if building == None else building}'"
+    def load_production(self, production_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./'):
+        query = f"`building_uuid` == '{self.uuid if building_uuid == None else building_uuid}'"
         query += f" & `uuid` == '{uuid}'" if uuid != None else ''
         query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
         query += f" & `year` == {year}" if year != None else ''
@@ -124,18 +125,18 @@ class Building:
             self._production = self.from_storage(filtered.iloc[0]['production'], storage=storage)
             return self._production
                 
-    def save_production(self, production_data, building=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
+    def save_production(self, production_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
         data_key = Production.copy()
         data_key['uuid'] = uuid if uuid != None else uuid4().hex
         data_key['production'] = uuid4().hex
-        data_key['building'] = self.uuid if building == None else building
+        data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._production.index[0].year
         self.to_storage(data_key['production'], self._production, storage=storage, use_pickle=use_pickle)
         return pd.concat([production_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
     
-    def load_consumption(self, consumption_data, building=None, year=None, timestamp=None, uuid=None, storage='./'):
-        query = f"`building` == '{self.uuid if building == None else building}'"
+    def load_consumption(self, consumption_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./'):
+        query = f"`building_uuid` == '{self.uuid if building_uuid == None else building_uuid}'"
         query += f" & `uuid` == '{uuid}'" if uuid != None else ''
         query += f" & `timestamp` == {timestamp}" if timestamp != None else ''
         query += f" & `year` == {year}" if year != None else ''
@@ -145,11 +146,11 @@ class Building:
             self._consumption = self.from_storage(filtered.iloc[0]['consumption'], storage=storage)
             return self._consumption
                 
-    def save_consumption(self, consumption_data, building=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
+    def save_consumption(self, consumption_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
         data_key = Consumption.copy()
         data_key['uuid'] = uuid if uuid != None else uuid4().hex
         data_key['consumption'] = uuid4().hex
-        data_key['building'] = self.uuid if building == None else building
+        data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._consumption.index[0].year
         self.to_storage(data_key['consumption'], self._consumption, storage=storage, use_pickle=use_pickle)
@@ -250,6 +251,7 @@ def _calc_location_production(loc):
 def _calc_building_production(b):
     pv = 0
     for loc in b._locations:
+      loc.update({'lat': b.lat, 'lon': b.lon})
       pv = pv + _calc_location_production(loc)
     return pv
 
