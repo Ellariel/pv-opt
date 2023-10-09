@@ -13,6 +13,7 @@ base_dir = './'
 config = {'city_solar_energy_price': 1.0, 
             'grid_selling_price': 2.0,
             'top_limit': 5,
+            'max_equipment_count': 10,
         }
 components = {}
 building_objects = []
@@ -62,7 +63,7 @@ def _ren(s):
     for k, v in s.items():
         if k in _rename:   
             k = _rename[k]
-            v = _match(k, v)
+            #v = _match(k, v)
             _r.update({k: v})
     return _r
         
@@ -110,6 +111,7 @@ def init_components(base_dir, upload_dir=None):
                     #print(df.info())
                     #print(df)
                     data_tables[k] = df
+                    data_tables[k].index = data_tables[k].uuid.copy()
                     print(f'loaded data length: {len(df)}')
                     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
                 except Exception as e:

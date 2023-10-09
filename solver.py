@@ -74,10 +74,10 @@ class ConstraintSolver:
         self.problem = constraint.Problem()
         #print(self.locations_combinations)
         self.problem.addVariable('A', self.locations_combinations) # locations involved
-        self.problem.addVariable('B', range(1, len(self.components['equipment'])+1)) # equipment id
-        self.problem.addVariable('D', range(1, len(self.components['battery'])+1)) # battery id
-        self.problem.addVariable('C', range(1, 10)) # equipment count
-        self.problem.addVariable('E', range(0, 10)) # battery count
+        self.problem.addVariable('B', list(self.components['equipment'].keys())) #range(1, len(self.components['equipment'])+1)) # equipment id
+        self.problem.addVariable('D', list(self.components['battery'].keys())) #range(1, len(self.components['battery'])+1)) # battery id
+        self.problem.addVariable('C', range(1, self.config['max_equipment_count'])) # equipment count
+        self.problem.addVariable('E', range(0, self.config['max_equipment_count'])) # battery count
         self.problem.addConstraint(self.equipment_square_constraint, "ABC")
         #self.problem.addConstraint(self.battery_voltage_constraint, "BD")
         self.problem.addConstraint(self.battery_capacity_constraint, "ABCDE")        

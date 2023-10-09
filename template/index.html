@@ -107,7 +107,7 @@
             
             function config_update(update=false) {
                 if (update == true) {
-                    value = '?city_solar_energy_price='+document.getElementById('city_solar_energy_price').value+'&grid_selling_price='+document.getElementById('grid_selling_price').value+'&top_limit='+document.getElementById('top_limit').value;
+                    value = '?city_solar_energy_price='+document.getElementById('city_solar_energy_price').value+'&grid_selling_price='+document.getElementById('grid_selling_price').value+'&top_limit='+document.getElementById('top_limit').value+'&max_equipment_count='+document.getElementById('max_equipment_count').value;
                     $.get('/api/v1.0/update'+value, function(req) {
                         if (req.exception == '') {
                         }
@@ -118,6 +118,7 @@
                             document.getElementById('city_solar_energy_price').value = req.city_solar_energy_price;
                             document.getElementById('grid_selling_price').value = req.grid_selling_price;
                             document.getElementById('top_limit').value = req.top_limit;
+                            document.getElementById('max_equipment_count').value = req.max_equipment_count;
                         }
                     });
                 }
@@ -257,6 +258,8 @@
                                             <td><div>grid_selling_price:</td><td><input type="text" name="grid_selling_price" id="grid_selling_price"/><br /></div></td>
                                         <tr>
                                             <td><div>top_limit:</td><td><input type="text" name="top_limit" id="top_limit"/><br /></div></td>
+                                        <tr>
+                                            <td><div>max_equipment_count:</td><td><input type="text" name="max_equipment_count" id="max_equipment_count"/><br /></div></td>
                                         <tr>
                                             <td><div>
                                                 <button type="button" onclick="javascript:config_update(true);" style="width: 100%">update config</button></td> 
