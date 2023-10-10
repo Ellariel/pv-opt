@@ -181,7 +181,7 @@ def api_figure(building_uuid, data_type):
             if b.uuid == building_uuid:
                 d = b.consumption if data_type == 'consumption' else b.production
                 #print(data_type, building_uuid, f'{d[d.columns[0]].sum()/1000:.1f}')
-                file_name = os.path.join(figures_dir, get_hash(d)+'_'+data_type+'.png')
+                file_name = os.path.join(figures_dir, get_hash(d)+'.png')
                 if not os.path.exists(file_name):
                     make_figure(d, file_name)
                 return jsonify({'image_url': get_encoded_img(file_name), 'exception': ''})
