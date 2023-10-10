@@ -125,6 +125,7 @@ class Building:
         filtered = production_data.query(query)
         if not utils.is_empty(filtered):
             filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
+            #print(filtered)
             self._production = self.from_storage(filtered.iloc[0]['production'], storage=storage)
             #print('load_production')
             self._production['t'] = self._production['t'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))#pd.to_datetime(self._production['t'], "%Y-%m-%d %H:%M:%S")
@@ -140,7 +141,7 @@ class Building:
         data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._production.index[0].year
-        data = self._production.reset_index().rename(columns={'production' : 'w'})        
+        data = self._production.reset_index().rename(columns={'production' : 'w', 'timestamp' : 't'})        
         self.to_storage(data_key['production'], data, storage=storage, use_pickle=use_pickle)
         return pd.concat([production_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
     
@@ -168,7 +169,7 @@ class Building:
         data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._consumption.index[0].year
-        data = self._consumption.reset_index().rename(columns={'consumption' : 'w'})  
+        data = self._consumption.reset_index().rename(columns={'consumption' : 'w', 'timestamp' : 't'})  
         self.to_storage(data_key['consumption'], data, storage=storage, use_pickle=use_pickle)
         return pd.concat([consumption_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
         
@@ -197,9 +198,10 @@ class Building:
                     self._total_equipment_costs += _calc_equipment_costs(eq)          
         return self._total_equipment_costs
 
-    def get_total_energy_storage_needed(self):
+    def get_total_energy_storage_needed(self, autonomy_period_days=None):
+        #print(f"autonomy_period_days: {autonomy_period_days}")
         if self._total_energy_storage_needed == None:
-            self._total_energy_storage_needed = _calc_total_energy_storage_needed(self)
+            self._total_energy_storage_needed = _calc_total_energy_storage_needed(self, autonomy_period_days=autonomy_period_days)
         return self._total_energy_storage_needed
 
     def get_total_solar_energy_consumption(self):
@@ -224,7 +226,7 @@ class Building:
         #print(self._consumption)
         return self._consumption
     
-    def updated(self, update_production=True):
+    def updated(self, update_production=True, autonomy_period_days=None):
         if update_production:
             self._production = None
         self._total_battery_costs = None
@@ -236,7 +238,7 @@ class Building:
         self.get_production()
         self.get_total_solar_energy_consumption()
         self.get_total_solar_energy_underproduction()     
-        self.get_total_energy_storage_needed() 
+        self.get_total_energy_storage_needed(autonomy_period_days=autonomy_period_days) 
         self.get_total_equipment_costs()  
         self.get_total_renting_costs()
         self.get_total_battery_costs()
@@ -282,8 +284,10 @@ def _mook_building_consumption(b, multiplicator=1):
     return pv[['consumption']]
 
 def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
+    #peak_daily_consumption = b.consumption.resample('D').sum().max()['consumption']
     peak_daily_consumption = b.consumption.resample('D').sum().max()['consumption']
     if autonomy_period_days == None:
+        #avg_daily_production = b.production.resample('D').sum().mean()['production']
         avg_daily_production = b.production.resample('D').sum().mean()['production']
         autonomy_period_days = np.ceil(peak_daily_consumption / avg_daily_production)
     return peak_daily_consumption * autonomy_period_days

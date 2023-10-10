@@ -12,9 +12,12 @@ from solver import ConstraintSolver, total_building_energy_costs, _update_buildi
 base_dir = './'
 config = {'city_solar_energy_price': 1.0, 
             'grid_selling_price': 2.0,
-            'top_limit': 5,
-            'max_equipment_count': 50,
+            'top_limit': 7,
+            'max_equipment_count': 300,
+            'min_equipment_count': 10,
+            'autonomy_period_days': 0.05, # ~1h
             'use_roof_sq' : True,
+            'save_opt_production' : True,
         }
 components = {}
 building_objects = []
@@ -128,8 +131,10 @@ def init_components(base_dir, upload_dir=None):
     _print(f"    buildings: {len(data_tables['building_data'])}, production: {len(data_tables['production_data'])}, consumption: {len(data_tables['consumption_data'])}") 
     _print(f"    stored solutions: {len(data_tables['solution_data'])}")
     
+    #print(data_tables['production_data'])
+    
     for idx, item in data_tables['building_data'].iterrows():
-        try:        
+        #try:        
             b = equip.Building(**item.to_dict())
             b.load_production(data_tables['production_data'], storage=production_dir)
             b.load_consumption(data_tables['consumption_data'], storage=consumption_dir)
@@ -138,40 +143,46 @@ def init_components(base_dir, upload_dir=None):
                 loc.update(item.to_dict())
                 b._locations.append(loc)
             b.updated(update_production=False)
+            #print(b.production['production'].sum())
             building_objects.append(b)
-        except Exception as e:
-            print(f'error loading building {b.uuid}: {str(e)}')
+        #except Exception as e:
+        #    print(f'error loading building {b.uuid}: {str(e)}')
     
 def calculate(base_dir):   
-    global components, building_objects, data_tables
+    global components, building_objects, data_tables, config
     
+    _print(f"config: {config}")
     for building in building_objects:
-        #try:
+        try:
             #print_building(building)
             building._erase_equipment()
             _print(f'building {building.uuid} solving...')
             start_time = time.time()
             solver = ConstraintSolver(building, components, config=config)
             solutions = solver.get_solutions()   
-            _print(f'    solving time: {time.time() - start_time}')
+            _print(f'    solving time (sec): {time.time() - start_time:.1f}')
             solutions = solutions[:config['top_limit']]
             #solutions.reverse()
-        
-            _print(f"    top-{config['top_limit']} solutions:")
-            #_print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
-            for i, s in enumerate(solutions):
-                if i == 0:
-                    _print(f"    {i+1}) optimal solution for building {building.uuid}: {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}")
-                    _update_building(building, components, s, use_roof_sq=config['use_roof_sq'])
-                    data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, _ren(s), storage=solution_dir)
-                    print_building(building)
-                else:
-                    _print(f'    {i+1}) {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}')
+            if len(solutions):
+                _print(f"    top-{config['top_limit']} solutions:")
+                #_print(f'    A - location, B - equipment, C - equipment count, D - battery, E - battery count')
+                for i, s in enumerate(solutions):
+                    if i == 0:
+                        _print(f"    {i+1}) better solution for building {building.uuid}: {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}")
+                        _update_building(building, components, s, use_roof_sq=config['use_roof_sq'])
+                        data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, _ren(s), storage=solution_dir)
+                        if config['save_opt_production']:
+                            data_tables['production_data'] = building.save_production(data_tables['production_data'], storage=production_dir)
+                        print_building(building)
+                    else:
+                        _print(f'    {i+1}) {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}')
+            else:
+                _print('no solution meets criteria.')
                     
             #break        
                           
-        #except Exception as e:
-        #    print(f'error calculating building {building.uuid}: {str(e)}')
+        except Exception as e:
+            print(f'error calculating building {building.uuid}: {str(e)}')
                 
     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
     #data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  

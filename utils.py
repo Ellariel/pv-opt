@@ -8,7 +8,7 @@ import cv2
 import base64
 
 def get_hash(obj):
-    return hashlib.md5((str(obj.index) + str(obj.values)).encode()).hexdigest()
+    return hashlib.md5(obj.to_string().encode()).hexdigest()
 
 def get_encoded_img(image_path):
     img = cv2.imread(image_path)
@@ -19,9 +19,9 @@ def get_encoded_img(image_path):
     return image
 
 def make_figure(data, file_name):
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6))
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 4))
     data.resample('W').mean().plot(ax=ax)
-    fig.text(0.1, 0.9, f"Yearly total: {data[data.columns[0]].sum()/1000:.1f} kWh", ha='left')
+    fig.text(0.2, 0.22, f"Yearly total: {data[data.columns[0]].sum()/1000:.1f} kWh", ha='left')
     #loc = plticker.MultipleLocator(base=30.0)
     #ax.xaxis.set_major_locator(loc)
     plt.xticks(rotation=90)

@@ -36,10 +36,10 @@ Solution = dict(
 def _locations(combination, locations):
     return [locations[i] for i in combination if i in locations]    
 
-def _update_building(building, components, solution, use_roof_sq=False):
+def _update_building(building, components, solution, use_roof_sq=False, autonomy_period_days=None):
     #print('use_roof_sq', use_roof_sq)
     A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
-    loc, eq, eq_count, bt, bt_count = copy.deepcopy(_locations(A, components['location'])), components['equipment'][B], C, copy.deepcopy(components['battery'][D]), E
+    loc, eq, eq_count, bt, bt_count = copy.deepcopy(sorted(_locations(A, components['location']), key=lambda x: x['price_per_sqm'])), components['equipment'][B], C, copy.deepcopy(components['battery'][D]), E
     eq_square_needed = eq['pv_size_mm'][0] * eq['pv_size_mm'][1]
     for l in loc:
         l['_equipment'] = []
@@ -56,9 +56,35 @@ def _update_building(building, components, solution, use_roof_sq=False):
     bt['battery_count'] = bt_count
     building._battery = [bt]
     building._locations = loc
-    building.updated()
+    building.updated(autonomy_period_days=autonomy_period_days)
     #print(building.production['production'].sum() - building.consumption['consumption'].sum())
     return building
+
+def _combinations(a): 
+    _comb = set()
+    for j in list(itertools.combinations_with_replacement(range(0, len(a)+1), len(a))) :
+        c = []
+        for i in j:
+            if i > 0 and i not in c:
+                c += [i]
+        if len(c):
+            _comb.add(tuple(sorted([a[i-1] for i in c])))
+    return list(_comb)
+
+def _range(min_count=10, max_count=100, zero=False):
+    def _primes(_from, _to):
+        out = list()
+        sieve = [True] * (_to+1)
+        for p in range(_from, _to+1):
+            if sieve[p]:
+                out.append(p)
+                for i in range(p, _to+1, p):
+                    sieve[i] = False
+        return out
+    _out = set(list(range(0 if zero else 1, min_count+1)) + _primes(min_count+1, max_count))
+    _out.add(min_count)
+    _out.add(max_count)
+    return list(_out)
 
 class ConstraintSolver:
     def __init__(self, building, possible_components, cache_storage='./', config={}):
@@ -71,21 +97,22 @@ class ConstraintSolver:
         #self.locations_combinations = list(itertools.permutations(range(0, len(self.components['location'])+1), 
         #                                                                   len(self.components['location'])))
         #self.locations_combinations = list(set([tuple([i for i in j if i > 0]) for j in self.locations_combinations]))
-        self.locations_combinations = list(itertools.combinations_with_replacement(range(0, len(_filtered_locations)+1), #combinations #permutations
-                                                                           len(_filtered_locations)))       
+        #self.locations_combinations = list(itertools.combinations_with_replacement(range(0, len(_filtered_locations)+1), #combinations #permutations
+        #                                                                   len(_filtered_locations)))       
         #print(self.locations_combinations)
         #self.locations_combinations = list(set([tuple(set([_filtered_locations[i-1] for i in j if i > 0])) for j in self.locations_combinations]))
         
-        _combinations = set()
-        for j in self.locations_combinations:
-            c = []
-            for i in j:
-                if i > 0 and i not in c:
-                    c += [i]
-            if len(c):
-                _combinations.add(tuple([_filtered_locations[i-1] for i in c]))
-        self.locations_combinations = list(_combinations)
-        #print(self.locations_combinations)
+        #_combinations = set()
+        #for j in self.locations_combinations:
+        #    c = []
+        #    for i in j:
+        #        if i > 0 and i not in c:
+        #            c += [i]
+        #    if len(c):
+        #        _combinations.add(tuple(sorted([_filtered_locations[i-1] for i in c])))
+        #self.locations_combinations = list(_combinations)
+        self.locations_combinations =_combinations(_filtered_locations)
+        print(f"locations_combinations count: {len(self.locations_combinations)}")
         
         self.solutions = []
         self.problem = constraint.Problem()
@@ -93,8 +120,11 @@ class ConstraintSolver:
         self.problem.addVariable('A', self.locations_combinations) # locations involved
         self.problem.addVariable('B', list(self.components['equipment'].keys())) #range(1, len(self.components['equipment'])+1)) # equipment id
         self.problem.addVariable('D', list(self.components['battery'].keys())) #range(1, len(self.components['battery'])+1)) # battery id
-        self.problem.addVariable('C', range(1, self.config['max_equipment_count'])) # equipment count
-        self.problem.addVariable('E', range(0, self.config['max_equipment_count'])) # battery count
+        #self.problem.addVariable('C', range(1, self.config['max_equipment_count'])) # equipment count
+        #self.problem.addVariable('E', range(0, self.config['max_equipment_count'])) # battery count
+        self.problem.addVariable('C', _range(self.config['min_equipment_count'], self.config['max_equipment_count'])) # equipment count
+        self.problem.addVariable('E', _range(self.config['min_equipment_count'], self.config['max_equipment_count'], zero=True)) # battery count 
+        #print(_range(self.config['min_equipment_count'], self.config['max_equipment_count']))       
         self.problem.addConstraint(self.equipment_square_constraint, "ABC")
         #self.problem.addConstraint(self.battery_voltage_constraint, "BD")
         self.problem.addConstraint(self.battery_capacity_constraint, "ABCDE")        
@@ -120,8 +150,8 @@ class ConstraintSolver:
 
     def get_cached_solution(self, A, B, C, D, E):
         def _calc():
-            _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E), use_roof_sq=self.config['use_roof_sq'])
-            return total_building_energy_costs(self.building, **self.config), self.building.get_total_energy_storage_needed()
+            _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E), use_roof_sq=self.config['use_roof_sq'], autonomy_period_days=self.config['autonomy_period_days'])
+            return total_building_energy_costs(self.building, **self.config), self.building.get_total_energy_storage_needed(autonomy_period_days=self.config['autonomy_period_days'])
         return self.cached_solutions.get_cached_solution((A, B, C), _calc)
 
     def calc_solution_costs(self, solution):
