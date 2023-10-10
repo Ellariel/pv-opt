@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from uuid import uuid4
 import json, os, pickle, time#, random, math
+from datetime import datetime
 import utils
 
 pv_gis = utils.PVGIS()
@@ -98,12 +99,13 @@ class Building:
 
     def from_storage(self, data_key, storage='./'):
         file_name = os.path.join(storage, data_key)
-        if os.path.exists(file_name+'.json'):
-            with open(file_name+'.json', 'r') as fp:
-                return pd.read_json(json.load(fp))
+        if os.path.exists(file_name+'.csv'):
+            #with open(file_name+'.csv', 'r') as fp:
+                #print(file_name)
+            return pd.read_csv(file_name+'.csv', parse_dates=True)#, dtype={'t' : datetime}) #pd.read_json(json.load(fp))
         elif os.path.exists(file_name+'.pickle'):
             with open(file_name+'.pickle', 'rb') as fp:
-                return pickle.load(fp)        
+                return pickle.load(fp) #pd.read_json(pickle.load(fp))        
 
     def to_storage(self, data_key, data, storage='./', use_pickle=False):
         file_name = os.path.join(storage, data_key)
@@ -111,8 +113,9 @@ class Building:
             with open(file_name+'.pickle', 'wb') as fp:
                 pickle.dump(data, fp)
         else:     
-            with open(file_name+'.json', 'w') as fp:
-                json.dump(data.to_json(), fp)
+            #with open(file_name+'.json', 'w') as fp:
+            #    json.dump(data.to_json(), fp)
+            data.to_csv(file_name+'.csv', index=False)
 
     def load_production(self, production_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./'):
         query = f"`building_uuid` == '{self.uuid if building_uuid == None else building_uuid}'"
@@ -123,6 +126,11 @@ class Building:
         if not utils.is_empty(filtered):
             filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
             self._production = self.from_storage(filtered.iloc[0]['production'], storage=storage)
+            #print('load_production')
+            self._production['t'] = self._production['t'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))#pd.to_datetime(self._production['t'], "%Y-%m-%d %H:%M:%S")
+            #print(self._production)
+            self._production.rename(columns={'w' : 'production'}, inplace=True)
+            self._production.set_index('t', inplace=True)
             return self._production
                 
     def save_production(self, production_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
@@ -132,7 +140,8 @@ class Building:
         data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._production.index[0].year
-        self.to_storage(data_key['production'], self._production, storage=storage, use_pickle=use_pickle)
+        data = self._production.reset_index().rename(columns={'production' : 'w'})        
+        self.to_storage(data_key['production'], data, storage=storage, use_pickle=use_pickle)
         return pd.concat([production_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
     
     def load_consumption(self, consumption_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./'):
@@ -144,6 +153,12 @@ class Building:
         if not utils.is_empty(filtered):
             filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
             self._consumption = self.from_storage(filtered.iloc[0]['consumption'], storage=storage)
+            #print('load_consumption')
+            #print(self._consumption.info())
+            self._consumption['t'] = self._consumption['t'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))
+            #self._consumption['t'] = pd.to_datetime(self._consumption['t'], "%Y-%m-%d %H:%M:%S")
+            self._consumption.rename(columns={'w' : 'consumption'}, inplace=True)
+            self._consumption.set_index('t', inplace=True)
             return self._consumption
                 
     def save_consumption(self, consumption_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
@@ -153,7 +168,8 @@ class Building:
         data_key['building_uuid'] = self.uuid if building_uuid == None else building_uuid
         data_key['timestamp'] = timestamp if timestamp != None else time.time()
         data_key['year'] = year if year != None else self._consumption.index[0].year
-        self.to_storage(data_key['consumption'], self._consumption, storage=storage, use_pickle=use_pickle)
+        data = self._consumption.reset_index().rename(columns={'consumption' : 'w'})  
+        self.to_storage(data_key['consumption'], data, storage=storage, use_pickle=use_pickle)
         return pd.concat([consumption_data, pd.DataFrame.from_dict({0: data_key}, orient='index')], ignore_index=True)
         
     def get_total_renting_costs(self):
@@ -204,6 +220,8 @@ class Building:
     def get_consumption(self):
         if not isinstance(self._consumption, (pd.Series, pd.DataFrame)):
             self._consumption = _mook_building_consumption(self)
+        #print(self.uuid)
+        #print(self._consumption)
         return self._consumption
     
     def updated(self, update_production=True):

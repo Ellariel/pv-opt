@@ -37,6 +37,7 @@ def _locations(combination, locations):
     return [locations[i] for i in combination if i in locations]    
 
 def _update_building(building, components, solution, use_roof_sq=False):
+    #print('use_roof_sq', use_roof_sq)
     A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
     loc, eq, eq_count, bt, bt_count = copy.deepcopy(_locations(A, components['location'])), components['equipment'][B], C, copy.deepcopy(components['battery'][D]), E
     eq_square_needed = eq['pv_size_mm'][0] * eq['pv_size_mm'][1]
@@ -49,12 +50,14 @@ def _update_building(building, components, solution, use_roof_sq=False):
                 total_square_available = l['size_WxHm'][0] * l['size_WxHm'][1] * 10 ** 6
             _eq = eq.copy()
             _eq['pv_count'] = min(np.ceil(total_square_available / eq_square_needed), eq_count)
+            #print('pv_count', _eq['pv_count'])
             eq_count -= _eq['pv_count']
             l['_equipment'] = [_eq]   
     bt['battery_count'] = bt_count
     building._battery = [bt]
     building._locations = loc
     building.updated()
+    #print(building.production['production'].sum() - building.consumption['consumption'].sum())
     return building
 
 class ConstraintSolver:
@@ -102,6 +105,7 @@ class ConstraintSolver:
             max_count = np.floor(sum([l['size_sqm'] * 10 ** 6 for l in loc]) / (eq['pv_size_mm'][0] * eq['pv_size_mm'][1]))
         else:
             max_count = sum([min(np.floor(l['size_WxHm'][0] * 1000 / eq['pv_size_mm'][0]), np.floor(l['size_WxHm'][1] * 1000 / eq['pv_size_mm'][1])) for l in loc])
+        #print(f"equipment_square_constraint: {eq_count} <= {max_count}")
         return eq_count <= max_count       
 
     def battery_voltage_constraint(self, B, D):
@@ -111,6 +115,7 @@ class ConstraintSolver:
     def battery_capacity_constraint(self, A, B, C, D, E):
         bt, bt_count = self.components['battery'][D], E
         _, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
+        #print(f"battery_capacity_constraint: {bt['battery_energy_Wh'] * bt['battery_discharge_factor'] * bt_count} >= {_total_energy_storage_needed}")
         return (bt['battery_energy_Wh'] * bt['battery_discharge_factor'] * bt_count >= _total_energy_storage_needed)
 
     def get_cached_solution(self, A, B, C, D, E):

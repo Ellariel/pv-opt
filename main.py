@@ -13,7 +13,7 @@ base_dir = './'
 config = {'city_solar_energy_price': 1.0, 
             'grid_selling_price': 2.0,
             'top_limit': 5,
-            'max_equipment_count': 10,
+            'max_equipment_count': 50,
             'use_roof_sq' : True,
         }
 components = {}
@@ -166,7 +166,10 @@ def calculate(base_dir):
                     data_tables['solution_data'] = solver.save_solution(data_tables['solution_data'], building, _ren(s), storage=solution_dir)
                     print_building(building)
                 else:
-                    _print(f'    {i+1}) {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}')            
+                    _print(f'    {i+1}) {_ren(s)} solution costs: {solver.calc_solution_costs(s):.3f}')
+                    
+            #break        
+                          
         #except Exception as e:
         #    print(f'error calculating building {building.uuid}: {str(e)}')
                 
