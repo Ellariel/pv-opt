@@ -16,8 +16,8 @@ config = {'city_solar_energy_price': 1.0,
             'max_equipment_count': 300,
             'min_equipment_count': 10,
             'autonomy_period_days': 0.05, # ~1h
-            'use_roof_sq' : True,
-            'save_opt_production' : True,
+            'use_roof_sq' : 1,
+            'save_opt_production' : 1,
         }
 components = {}
 building_objects = []

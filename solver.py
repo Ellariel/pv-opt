@@ -26,10 +26,10 @@ def total_building_energy_costs(b, city_solar_energy_price=1.0, grid_selling_pri
 
 Solution = dict(
         uuid = None,
+        building_uuid = 1,
+        solution = {},
         selected = 0,
         timestamp = 1692989661.8293242,
-        building = 1,
-        solution = {},
         stored = '5c75deb8d33045cd86bb3ee9b7e98c25'
 )
 
