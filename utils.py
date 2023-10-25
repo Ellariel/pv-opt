@@ -159,20 +159,22 @@ class PVGIS:
         
 class Cache:
     def __init__(self, storage='./', use_pickle=True):
+        #print('!!!!!!!!', storage)
         self.storage_file = os.path.join(storage, f"cache{'.pickle' if use_pickle else '.json'}")
         self.module = pickle if use_pickle else json
-        self.load()
+        self.storage = self.load()
 
     def load(self):
         if os.path.exists(self.storage_file):
             with open(self.storage_file, 'r' if '.json' in self.storage_file else 'rb') as fp:
-                self.storage = self.module.load(fp)
-        else:
-            self.storage = {}
+                return self.module.load(fp)
+        return {}
         
     def save(self):
+        _storage = self.load()
+        _storage.update(self.storage)
         with open(self.storage_file, 'w' if '.json' in self.storage_file else 'wb') as fp:
-            self.module.dump(self.storage, fp, protocol=pickle.HIGHEST_PROTOCOL)
+            self.module.dump(_storage, fp, protocol=pickle.HIGHEST_PROTOCOL)
             
     def get_cached_solution(self, key, calc_if_none_method=None):
         if key in self.storage:

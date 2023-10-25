@@ -1,4 +1,4 @@
-import time, os, copy, pickle#, datetime, random, requests, uuid, json, 
+import time, os, copy, pickle, time, random#, datetime, random, requests, uuid, json, 
 import pandas as pd, numpy as np
 #from tqdm.notebook import tqdm
 #from pandas import json_normalize
@@ -40,7 +40,7 @@ def _update_building(building, components, solution, use_roof_sq=False, autonomy
     #print('use_roof_sq', use_roof_sq)
     A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
     loc, eq, eq_count, bt, bt_count = copy.deepcopy(sorted(_locations(A, components['location']), key=lambda x: x['price_per_sqm'])), components['equipment'][B], C, copy.deepcopy(components['battery'][D]), E
-    eq_square_needed = eq['pv_size_mm'][0] * eq['pv_size_mm'][1]
+    eq_square_needed = eq['pv_size_Wmm'] * eq['pv_size_Hmm']
     for l in loc:
         l['_equipment'] = []
         if eq_count > 0:
@@ -59,6 +59,15 @@ def _update_building(building, components, solution, use_roof_sq=False, autonomy
     building.updated(autonomy_period_days=autonomy_period_days)
     #print(building.production['production'].sum() - building.consumption['consumption'].sum())
     return building
+
+def _max_equipment_count_in_loc(locations, equipment, use_roof_sq=True):
+        max_count = []
+        for eq in equipment:
+                if use_roof_sq: 
+                    max_count += [sum([np.floor((l['size_sqm'] * 10 ** 6) / (eq['pv_size_Wmm'] * eq['pv_size_Hmm'])) for l in locations])]
+                else:
+                    max_count += [sum([min(np.floor(l['size_WxHm'][0] * 1000 / eq['pv_size_Wmm']), np.floor(l['size_WxHm'][1] * 1000 / eq['pv_size_Hmm'])) for l in locations])]
+        return max_count
 
 def _combinations(a): 
     _comb = set()
@@ -115,15 +124,32 @@ class ConstraintSolver:
         print(f"locations_combinations count: {len(self.locations_combinations)}")
         
         self.solutions = []
+        self.costs = []
         self.problem = constraint.Problem()
         #print(self.locations_combinations)
         self.problem.addVariable('A', self.locations_combinations) # locations involved
         self.problem.addVariable('B', list(self.components['equipment'].keys())) #range(1, len(self.components['equipment'])+1)) # equipment id
-        self.problem.addVariable('D', list(self.components['battery'].keys())) #range(1, len(self.components['battery'])+1)) # battery id
+
+        if self.config['autonomy_period_days'] == 0.0:
+            self.problem.addVariable('D', ['NONE']) # # battery id
+        else:        
+            self.problem.addVariable('D', list(self.components['battery'].keys())) #range(1, len(self.components['battery'])+1)) # battery id
         #self.problem.addVariable('C', range(1, self.config['max_equipment_count'])) # equipment count
         #self.problem.addVariable('E', range(0, self.config['max_equipment_count'])) # battery count
-        self.problem.addVariable('C', _range(self.config['min_equipment_count'], self.config['max_equipment_count'])) # equipment count
-        self.problem.addVariable('E', _range(self.config['min_equipment_count'], self.config['max_equipment_count'], zero=True)) # battery count 
+        
+        max_equipment_count = _max_equipment_count_in_loc([v for k, v in self.components['location'].items() if k in _filtered_locations], [v for k, v in self.components['equipment'].items()])
+        #print(f"max_equipment_count: {self.config['max_equipment_count']}, min_equipment_count: {self.config['min_equipment_count']}, _max_equipment_count_in_loc: {max_equipment_count}")
+        #max_equipment_count = int(np.max(max_equipment_count + [self.config['max_equipment_count']]))
+        max_equipment_count = int(np.max(max_equipment_count))
+        print(f"max_equipment_count: {max_equipment_count}")
+        
+        self.problem.addVariable('C', _range(self.config['min_equipment_count'], max_equipment_count)) # equipment count
+        
+        if self.config['autonomy_period_days'] == 0.0:
+            self.problem.addVariable('E', [0]) # battery count 
+        else:
+            self.problem.addVariable('E', _range(self.config['min_equipment_count'], max_equipment_count, zero=True)) # battery count
+            
         #print(_range(self.config['min_equipment_count'], self.config['max_equipment_count']))       
         self.problem.addConstraint(self.equipment_square_constraint, "ABC")
         #self.problem.addConstraint(self.battery_voltage_constraint, "BD")
@@ -131,10 +157,7 @@ class ConstraintSolver:
         
     def equipment_square_constraint(self, A, B, C):
         loc, eq, eq_count = _locations(A, self.components['location']), self.components['equipment'][B], C
-        if self.config['use_roof_sq']: 
-            max_count = np.floor(sum([l['size_sqm'] * 10 ** 6 for l in loc]) / (eq['pv_size_mm'][0] * eq['pv_size_mm'][1]))
-        else:
-            max_count = sum([min(np.floor(l['size_WxHm'][0] * 1000 / eq['pv_size_mm'][0]), np.floor(l['size_WxHm'][1] * 1000 / eq['pv_size_mm'][1])) for l in loc])
+        max_count = sum(_max_equipment_count_in_loc(loc, [eq], self.config['use_roof_sq']))
         #print(f"equipment_square_constraint: {eq_count} <= {max_count}")
         return eq_count <= max_count       
 
@@ -142,11 +165,14 @@ class ConstraintSolver:
         eq, bt = self.components['equipment'][B], self.components['battery'][D]
         return eq['pv_voltage'] == bt['battery_voltage']
 
-    def battery_capacity_constraint(self, A, B, C, D, E):
-        bt, bt_count = self.components['battery'][D], E
+    def battery_capacity_constraint(self, A, B, C, D, E):       
+        bt, bt_count = self.components['battery'][D], E        
         _, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
+        _total_energy_storage = bt['battery_energy_kWh'] * bt['battery_discharge_factor'] * bt_count * 1000
+        if self.config['autonomy_period_days'] == 0.0 and bt_count == 0:
+            return True
         #print(f"battery_capacity_constraint: {bt['battery_energy_Wh'] * bt['battery_discharge_factor'] * bt_count} >= {_total_energy_storage_needed}")
-        return (bt['battery_energy_Wh'] * bt['battery_discharge_factor'] * bt_count >= _total_energy_storage_needed)
+        return _total_energy_storage >= _total_energy_storage_needed and _total_energy_storage <= _total_energy_storage_needed * 1.1
 
     def get_cached_solution(self, A, B, C, D, E):
         def _calc():
@@ -158,14 +184,17 @@ class ConstraintSolver:
         A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
         _total_building_energy_costs, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
         loc, bt, bt_count = _locations(A, self.components['location']), self.components['battery'][D], E
-        return _total_building_energy_costs + len(loc) + (bt['battery_energy_Wh'] * bt['battery_price_per_Wh'] * bt_count)
+        return _total_building_energy_costs + len(loc) + (bt['battery_energy_kWh'] * bt['battery_price_per_kWh'] * bt_count)
 
     def get_solutions(self, always_recalc=False):
         if len(self.solutions) == 0 or always_recalc:
             self.solutions = self.problem.getSolutions()
+            time.sleep(random.randint(1, 5))
             self.cached_solutions.save()
-            print(f"solutions: {len(self.solutions)}, cahed: {len(self.cached_solutions.storage)}")
-        return sorted(self.solutions, key=self.calc_solution_costs)
+            self.costs = [self.calc_solution_costs(s) for s in self.solutions]
+        print(f"solutions: {len(self.solutions)}, cahed: {len(self.cached_solutions.storage)}")
+        return self.solutions, self.costs
+        #return sorted(self.solutions, key=self.calc_solution_costs)
 
     def from_storage(self, data_key, storage='./'):
         file_name = os.path.join(storage, data_key)+'.pickle'

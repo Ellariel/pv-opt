@@ -1,9 +1,8 @@
 import time, os, sys, glob#, pickle, json, uuid
-import pandas as pd, numpy as np
+import pandas as pd#, numpy as np
 
 #from ppretty import ppretty
 from ast import literal_eval
-from operator import itemgetter
 
 import equip
 #from equip import Building, Equipment, Location, Battery
@@ -11,7 +10,7 @@ from utils import save_pickle, load_pickle, move_files, make_figure
 from solver import ConstraintSolver, total_building_energy_costs, _update_building
 
 import ray
-
+ray.init()
 
 base_dir = './'
 config = {'city_solar_energy_price': 1.0, 
@@ -22,10 +21,9 @@ config = {'city_solar_energy_price': 1.0,
             'autonomy_period_days': 0.05, # ~1h
             'use_roof_sq' : 1,
             'save_opt_production' : 1,
-            'ray_rate': 1.0,
         }
 components = {}
-#building_objects = []
+building_objects = []
 data_tables = {'location_data': None,
               'equipment_data': None, 
               'battery_data': None,
@@ -96,9 +94,7 @@ def update_config(new_config):
     config.update(new_config)
     
 def init_components(base_dir, upload_dir=None):
-    global components, data_tables
-    
-    
+    global components, building_objects, data_tables
     
     _print(f'base_dir: {base_dir}', clear=True)
     
@@ -123,15 +119,6 @@ def init_components(base_dir, upload_dir=None):
                     #print(df)
                     data_tables[k] = df
                     data_tables[k].index = data_tables[k].uuid.copy()
-                    
-                    if 'battery_price' in data_tables[k].columns:
-                        data_tables[k]['battery_price_per_kWh'] = (data_tables[k]['battery_price'] / data_tables[k]['battery_energy_kWh']).fillna(0)
-                        #data_tables[k].loc[pd.isna(data_tables[k]['battery_energy_kWh']), ['battery_price_per_kWh']] = 0
-                        #print(data_tables[k]['battery_price_per_kWh'])
-                        
-                    if 'pv_price' in data_tables[k].columns:
-                        data_tables[k]['pv_price_per_Wp'] = (data_tables[k]['pv_price'] / data_tables[k]['pv_watt_peak']).fillna(0)
-                    
                     print(f'loaded data length: {len(df)}')
                     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
                 except Exception as e:
@@ -148,7 +135,7 @@ def init_components(base_dir, upload_dir=None):
     _print(f"    stored solutions: {len(data_tables['solution_data'])}")
     
     #print(data_tables['production_data'])
-    '''
+    
     for idx, item in data_tables['building_data'].iterrows():
         #try:        
             b = equip.Building(**item.to_dict())
@@ -163,99 +150,11 @@ def init_components(base_dir, upload_dir=None):
             building_objects.append(b)
         #except Exception as e:
         #    print(f'error loading building {b.uuid}: {str(e)}')
-    '''
-
-def dict_to_building(building_dict):
-        global components, data_tables, config
-        b = equip.Building(**building_dict)
-        b.load_production(data_tables['production_data'], storage=production_dir)
-        b.load_consumption(data_tables['consumption_data'], storage=consumption_dir)
-        for idx, item in data_tables['location_data'][data_tables['location_data']['building_uuid'] == b.uuid].iterrows():
-                loc = equip.Location.copy()
-                loc.update(item.to_dict())
-                b._locations.append(loc)
-        return b
-
+    
 def calculate(base_dir):   
-    global components, data_tables, config
-    ray.init(ignore_reinit_error=True)
-    
-    #ray_rate = 1.0
-    
-    @ray.remote
-    def solve(building, components, config):
-        solutions, costs = [], []
-        try:
-            building._erase_equipment()
-            print(f'solving building: {building.uuid}')
-            start_time = time.time()
-            solver = ConstraintSolver(building, components, config=config)
-            solutions, costs = solver.get_solutions()   
-            print(f'{building.uuid} solving time (sec): {time.time() - start_time :.1f}')
-        except Exception as e:
-            print(f'error calculating building {building.uuid}: {str(e)}')
-        return solutions, costs  
+    global components, building_objects, data_tables, config
     
     _print(f"config: {config}")
-    
-    equipment_list = list(components['equipment'].keys())
-    equipment_count = len(equipment_list)
-    chunk_size = int(config['ray_rate'] * equipment_count)
-    if chunk_size < 1:
-        chunk_size = 1
-    
-    ray_instances = {}
-    for chunk in range(0, equipment_count, chunk_size):
-        print(equipment_list[chunk:chunk + chunk_size])
-        _components = components.copy()
-        _components['equipment'] = {k : v for k, v in components['equipment'].items() if k in equipment_list[chunk:chunk + chunk_size]}
-        for _, b in data_tables['building_data'].iterrows(): #.iloc[:2]
-            if b['uuid'] not in ray_instances:
-                ray_instances[b['uuid']] = []
-            ray_instances[b['uuid']] += [solve.remote(dict_to_building(b.to_dict()), _components, config)]
-    
-    ray_results = {}
-    for _, b in data_tables['building_data'].iterrows(): #.iloc[:2]
-        solutions, costs = [], []
-        for (s, c) in ray.get(ray_instances[b['uuid']]):
-                solutions += s
-                costs += c
-        if len(solutions) > 1:
-            solutions = itemgetter(*np.argsort(costs))(solutions) 
-            costs = itemgetter(*np.argsort(costs))(costs)
-            solutions = solutions[:config['top_limit']]
-            costs = costs[:config['top_limit']]
-        ray_results[b['uuid']] = (solutions, costs)
-
-    ray.shutdown()
-    print(ray_results)
-    
-    for _, b in data_tables['building_data'].iterrows(): #.iloc[:2]
-        if b['uuid'] in ray_results:
-            building = dict_to_building(b.to_dict())
-            s = ray_results[b['uuid']][0][0]
-            _update_building(building, components, s, use_roof_sq=config['use_roof_sq'])
-            s = _ren(s)
-            data_tables['solution_data'] = ConstraintSolver(building, components, config=config).save_solution(data_tables['solution_data'], building, s, storage=solution_dir)
-            if config['save_opt_production']:
-                data_tables['production_data'] = building.save_production(data_tables['production_data'], storage=production_dir)
-            _print(f"solution for building {b['uuid']}: {s}")
-            print_building(building)        
-        
-    save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))    
-    
-    
-    '''
-    
-# Start two tasks in the background.
-x_id = solve1.remote(0)
-y_id = solve2.remote(1)
-
-# Block until the tasks are done and get the results.
-x, y = ray.get([x_id, y_id])    
-    
-    
-    
     for building in building_objects:
         try:
             #print_building(building)
@@ -290,7 +189,6 @@ x, y = ray.get([x_id, y_id])
                 
     save_pickle(data_tables, os.path.join(base_dir, 'components.pickle'))
     #data_tables['solution_data'].to_csv(os.path.join(base_dir, 'solution.csv'), index=False, sep=';')  
-    '''
 '''
 def _init_components(base_dir):
     global components, building_objects, data_tables

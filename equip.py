@@ -15,17 +15,21 @@ Battery = dict(
         uuid = None,
         battery_count = 1,
         type = 'LiFePO4',
+        battery_price = 100.0,
         #battery_capacity_Ah = 100,
-        battery_energy_Wh = 4800,
+        battery_energy_kWh = 4.8,
         #battery_voltage = 48,
         battery_discharge_factor = 0.7,
-        battery_price_per_Wh = 9.738,
+        battery_price_per_kWh = 9.738,
 )
 Equipment = dict(
         uuid = None,
         pv_count = 1,
         type = 'CIS',
-        pv_size_mm = (2176, 1098),
+        pv_price = 100.0,
+        pv_size_Wmm = 2176,
+        pv_size_Hmm = 1098,
+        #pv_size_mm = (2176, 1098),
         pv_efficiency = 18,
         pv_watt_peak = 500,
         pv_price_per_Wp = 0.90,
@@ -179,7 +183,7 @@ class Building:
             for loc in self._locations:
                 total_sq = 0
                 for eq in loc['_equipment']:
-                    total_sq += (eq['pv_size_mm'][0] / 1000) * (eq['pv_size_mm'][1] / 1000) * eq['pv_count']
+                    total_sq += (eq['pv_size_Wmm'] / 1000) * (eq['pv_size_Hmm'] / 1000) * eq['pv_count']
                 self._total_renting_costs += total_sq * loc['price_per_sqm']              
         return self._total_renting_costs     
     
@@ -293,7 +297,7 @@ def _calc_total_energy_storage_needed(b, autonomy_period_days=None):
     return peak_daily_consumption * autonomy_period_days
 
 def _calc_battery_costs(bt):
-    return bt['battery_energy_Wh'] * bt['battery_price_per_Wh'] * bt['battery_count']
+    return bt['battery_energy_kWh'] * bt['battery_price_per_kWh'] * bt['battery_count']
 
 def _calc_equipment_costs(eq):
     return eq['pv_watt_peak'] * eq['pv_price_per_Wp'] * eq['pv_count']
