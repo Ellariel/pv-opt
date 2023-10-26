@@ -4,6 +4,10 @@ import app
 #import openpyxl
 #from app import app
 
+#import msgpack
+#msgpack.packb([1, 2, 3], use_bin_type=True)
+
+
 #ui.label("Hello Super NiceGUI!")
 #ui.button("BUTTON", on_click=lambda: ui.notify("button was pressed"))
 

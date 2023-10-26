@@ -1,5 +1,6 @@
 import time, os, sys, glob#, pickle, json, uuid
 import pandas as pd, numpy as np
+from humanfriendly import format_timespan
 
 #from ppretty import ppretty
 from ast import literal_eval
@@ -8,7 +9,7 @@ from operator import itemgetter
 import equip
 #from equip import Building, Equipment, Location, Battery
 from utils import save_pickle, load_pickle, move_files, make_figure
-from solver import ConstraintSolver, total_building_energy_costs, _update_building
+from solver import ConstraintSolver, total_building_energy_costs, total_installation_costs, _update_building
 
 import ray
 
@@ -22,7 +23,7 @@ config = {'city_solar_energy_price': 1.0,
             'autonomy_period_days': 0.05, # ~1h
             'use_roof_sq' : 1,
             'save_opt_production' : 1,
-            'ray_rate': 1.0,
+            'ray_rate': 0.3,
         }
 components = {}
 #building_objects = []
@@ -82,13 +83,15 @@ def print_building(building):
     total_production: {building.production['production'].sum():.1f}
     total_consumption: {building.consumption['consumption'].sum():.1f}
     total_solar_energy_underproduction: {building.total_solar_energy_underproduction:.1f}
+    total_solar_energy_overproduction: {building.total_solar_energy_overproduction:.1f}
     total_building_energy_costs: {total_building_energy_costs(building, **config):.1f}
     locations_involved: {len(building._locations)}
     total_renting_costs: {building.total_renting_costs:.1f}
     equipment_units_used: {sum([eq['pv_count'] for loc in building._locations for eq in loc['_equipment']])}
     total_equipment_costs: {building.total_equipment_costs:.1f}
     baterry_units_used: {sum([bt['battery_count'] for bt in building._battery])}
-    total_battery_costs: {building.total_battery_costs:.1f}"""
+    total_battery_costs: {building.total_battery_costs:.1f}
+    total_installation_costs: {total_installation_costs(building, **config):.1f}"""
     _print(status)
     
 def update_config(new_config):
@@ -97,8 +100,6 @@ def update_config(new_config):
     
 def init_components(base_dir, upload_dir=None):
     global components, data_tables
-    
-    
     
     _print(f'base_dir: {base_dir}', clear=True)
     
@@ -191,24 +192,35 @@ def calculate(base_dir):
             start_time = time.time()
             solver = ConstraintSolver(building, components, config=config)
             solutions, costs = solver.get_solutions()   
-            print(f'{building.uuid} solving time (sec): {time.time() - start_time :.1f}')
+            print(f'{building.uuid} solving time: {format_timespan(time.time() - start_time)}')
         except Exception as e:
             print(f'error calculating building {building.uuid}: {str(e)}')
         return solutions, costs  
     
     _print(f"config: {config}")
     
-    equipment_list = list(components['equipment'].keys())
-    equipment_count = len(equipment_list)
-    chunk_size = int(config['ray_rate'] * equipment_count)
+    if config['autonomy_period_days'] == 0.0:
+        split_key = 'equipment'
+    else:
+        if len(components['equipment']) >= len(components['battery']):
+            split_key = 'equipment'
+        else:
+            split_key = 'battery'        
+    
+    split_list = list(components[split_key].keys())
+    split_count = len(split_list)
+    chunk_size = int(config['ray_rate'] * split_count)
     if chunk_size < 1:
         chunk_size = 1
+        
+    print(f"splitting by: {split_key}, chunk size: {chunk_size}")
+    start_time = time.time()
     
     ray_instances = {}
-    for chunk in range(0, equipment_count, chunk_size):
-        print(equipment_list[chunk:chunk + chunk_size])
+    for chunk in range(0, split_count, chunk_size):
+        print(split_list[chunk:chunk + chunk_size])
         _components = components.copy()
-        _components['equipment'] = {k : v for k, v in components['equipment'].items() if k in equipment_list[chunk:chunk + chunk_size]}
+        _components[split_key] = {k : v for k, v in components[split_key].items() if k in split_list[chunk:chunk + chunk_size]}
         for _, b in data_tables['building_data'].iterrows(): #.iloc[:2]
             if b['uuid'] not in ray_instances:
                 ray_instances[b['uuid']] = []
@@ -227,6 +239,7 @@ def calculate(base_dir):
             costs = costs[:config['top_limit']]
         ray_results[b['uuid']] = (solutions, costs)
 
+    print(f'total solving time: {format_timespan(time.time() - start_time)}')
     ray.shutdown()
     print(ray_results)
     

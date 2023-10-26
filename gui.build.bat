@@ -1,4 +1,4 @@
-python -m nuitka gui.py --standalone --include-package=openpyxl
+python -m nuitka gui.py --standalone --include-package=openpyxl,msgpack,ray
 xcopy consumption gui.dist\consumption /i /e /y
 xcopy production gui.dist\production /i /e /y
 xcopy pv_outputs gui.dist\pv_outputs /i /e /y

@@ -86,6 +86,7 @@ class Building:
         self._total_energy_storage_needed = None
         self._total_solar_energy_consumption = None
         self._total_solar_energy_underproduction = None
+        self._total_solar_energy_overproduction = None
         
     def _erase_equipment(self, keep_consumption=True):
         self._battery = []
@@ -213,10 +214,17 @@ class Building:
             self._total_solar_energy_consumption = min(self.production['production'].sum(), self.consumption['consumption'].sum())
         return self._total_solar_energy_consumption
 
+    # solar panel underproduction SPU = max{0, (building consumption - building solar production)}
     def get_total_solar_energy_underproduction(self):
         if self._total_solar_energy_underproduction == None:
             self._total_solar_energy_underproduction = max(0, self.consumption['consumption'].sum() - self.production['production'].sum())
         return self._total_solar_energy_underproduction
+    
+    #solar panel overproduction SPO = max{0, (building solar production - building consumption)}
+    def get_total_solar_energy_overproduction(self):
+        if self._total_solar_energy_overproduction == None:
+            self._total_solar_energy_overproduction = max(0, self.production['production'].sum() - self.consumption['consumption'].sum())
+        return self._total_solar_energy_overproduction
         
     def get_production(self):
         if not isinstance(self._production, (pd.Series, pd.DataFrame)):
@@ -241,7 +249,8 @@ class Building:
         self._total_solar_energy_underproduction = None
         self.get_production()
         self.get_total_solar_energy_consumption()
-        self.get_total_solar_energy_underproduction()     
+        self.get_total_solar_energy_underproduction()  
+        self.get_total_solar_energy_overproduction()   
         self.get_total_energy_storage_needed(autonomy_period_days=autonomy_period_days) 
         self.get_total_equipment_costs()  
         self.get_total_renting_costs()
@@ -255,6 +264,7 @@ class Building:
     total_energy_storage_needed = property(fget=get_total_energy_storage_needed)
     total_solar_energy_consumption = property(fget=get_total_solar_energy_consumption)
     total_solar_energy_underproduction = property(fget=get_total_solar_energy_underproduction)
+    total_solar_energy_overproduction = property(fget=get_total_solar_energy_overproduction)
 
 def _calc_equipment_production(loc, eq):
     nominal_pv = pv_gis.get_nominal_pv(slope=loc['slope'], # Watt per 1 kWp

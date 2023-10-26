@@ -18,11 +18,17 @@ from utils import Cache, is_empty
 # max: Genossenschaft profit = (SPO * BP) + (SEC * CP) – IC - roof renting costs
 # min: building energy cost = (SEC * CP) + (SPU * SP) + roof renting costs
 
+# min: building energy cost = (SEC * CP) + (SPU * SP) + roof renting costs
 def total_building_energy_costs(b, city_solar_energy_price=1.0, grid_selling_price=1.5, **kwargs):
     #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
     return b.total_solar_energy_consumption * city_solar_energy_price +\
            b.total_solar_energy_underproduction * grid_selling_price +\
            b.total_renting_costs
+           
+# installation costs = costofequipment and battery
+def total_installation_costs(b, **kwargs):
+    #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
+    return b.total_equipment_costs + b.total_battery_costs
 
 Solution = dict(
         uuid = None,
@@ -167,7 +173,7 @@ class ConstraintSolver:
 
     def battery_capacity_constraint(self, A, B, C, D, E):       
         bt, bt_count = self.components['battery'][D], E        
-        _, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
+        _total_building_energy_costs, _total_installation_costs, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
         _total_energy_storage = bt['battery_energy_kWh'] * bt['battery_discharge_factor'] * bt_count * 1000
         if self.config['autonomy_period_days'] == 0.0 and bt_count == 0:
             return True
@@ -177,14 +183,14 @@ class ConstraintSolver:
     def get_cached_solution(self, A, B, C, D, E):
         def _calc():
             _update_building(self.building, self.components, dict(A=A, B=B, C=C, D=D, E=E), use_roof_sq=self.config['use_roof_sq'], autonomy_period_days=self.config['autonomy_period_days'])
-            return total_building_energy_costs(self.building, **self.config), self.building.get_total_energy_storage_needed(autonomy_period_days=self.config['autonomy_period_days'])
+            return total_building_energy_costs(self.building, **self.config), total_installation_costs(self.building, **self.config), self.building.get_total_energy_storage_needed(autonomy_period_days=self.config['autonomy_period_days'])
         return self.cached_solutions.get_cached_solution((A, B, C), _calc)
 
     def calc_solution_costs(self, solution):
         A, B, C, D, E = solution['A'], solution['B'], solution['C'], solution['D'], solution['E']
-        _total_building_energy_costs, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
+        _total_building_energy_costs, _total_installation_costs, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)
         loc, bt, bt_count = _locations(A, self.components['location']), self.components['battery'][D], E
-        return _total_building_energy_costs + len(loc) + (bt['battery_energy_kWh'] * bt['battery_price_per_kWh'] * bt_count)
+        return _total_building_energy_costs + _total_installation_costs + len(loc)/100# + (bt['battery_energy_kWh'] * bt['battery_price_per_kWh'] * bt_count)
 
     def get_solutions(self, always_recalc=False):
         if len(self.solutions) == 0 or always_recalc:
