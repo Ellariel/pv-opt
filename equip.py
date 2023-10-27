@@ -4,8 +4,9 @@ from uuid import uuid4
 import json, os, pickle, time#, random, math
 from datetime import datetime
 import utils
+from pvgis import PVGIS
 
-pv_gis = utils.PVGIS()
+pv_gis = PVGIS()#utils.PVGIS()
 
 # https://www.youtube.com/watch?v=OPNBWaBZvjc&ab_channel=%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B9%D1%84%D0%BE%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84
 # https://www.youtube.com/watch?v=Oriqr7K9kAc&ab_channel=%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D0%B5%D0%BD%D1%81%D0%BA%D0%B8%D0%B9%D1%84%D0%BE%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84
@@ -267,13 +268,15 @@ class Building:
     total_solar_energy_overproduction = property(fget=get_total_solar_energy_overproduction)
 
 def _calc_equipment_production(loc, eq):
-    nominal_pv = pv_gis.get_nominal_pv(slope=loc['slope'], # Watt per 1 kWp
+    #nominal_pv = pv_gis.get_nominal_pv(slope=loc['slope'], # Watt per 1 kWp
+    nominal_pv = pv_gis.get_production_timeserie(slope=loc['slope'], # Watt per 1 kWp
                              azimuth=loc['azimuth'], 
                              pvtech=eq['type'], 
-                             loss=eq['pv_loss'], 
+                             system_loss=eq['pv_loss'], 
                              lat=loc['lat'], 
                              lon=loc['lon'],)
-    production = nominal_pv * (eq['pv_watt_peak'] / 1000) * eq['pv_count']
+    production = pd.DataFrame(nominal_pv) * (eq['pv_watt_peak'] / 1000) * eq['pv_count']
+    #print(production)
     return production
 
 def _calc_location_production(loc):

@@ -4,6 +4,7 @@ import os
 import datetime
 import hashlib
 import pandas as pd
+from faas_cache_dict import FaaSCacheDict
 from faas_cache_dict.file_faas_cache_dict import FileBackedFaaSCache
 
 PVGIS_ENDPOINT = "https://re.jrc.ec.europa.eu/"
@@ -53,17 +54,22 @@ def _request_PVGIS(datatype='hourly', pvtechchoice='CIS', slope=0, azimuth=0, mo
                 print(str(e))      
 
 class PVGIS(object):
-    def __init__(self, cache_root_dir=PVGIS_DEFAULT_CACHE_DIR):
-        self.cache_root_dir = cache_root_dir
-        os.makedirs(self.cache_root_dir, exist_ok=True)
+    def __init__(self, local_cache_dir=PVGIS_DEFAULT_CACHE_DIR, verbose=False):
+        self.verbose = verbose
+        self.cache_root_dir = local_cache_dir
         self.key_name = PVGIS_DEFAULT_CACHE_FILE
-        self.cache = FileBackedFaaSCache.init(key_name=self.key_name, root_path=self.cache_root_dir)
+        if local_cache_dir:
+            os.makedirs(self.cache_root_dir, exist_ok=True)
+            self.cache = FileBackedFaaSCache.init(key_name=self.key_name, root_path=self.cache_root_dir)
+        else:
+            self.cache = FaaSCacheDict()
         
     def get_radiation_data(self, slope=0, azimuth=0, pvtech='CIS', lat=52.373, lon=9.738, system_loss=14, datayear=2016, datatype='hourly'):       
         api_parameters = ', '.join([f"{k}:{v}" for k, v in sorted(locals().items(), key=lambda item: item[0]) if k not in ['self']])     
         request_key = _get_hash(api_parameters)
         if request_key not in self.cache:
-            print(f'requesting data from PVGIS, {api_parameters}')
+            if self.verbose:
+                print(f'requesting data from PVGIS, {api_parameters}')
             self.cache[request_key] = _request_PVGIS(slope=slope,
                                  azimuth=azimuth,
                                  pvtechchoice=pvtech,
@@ -73,7 +79,8 @@ class PVGIS(object):
                                  endyear=datayear,
                                  datatype=datatype)
         else:
-            print(f'getting cached PVGIS data, {api_parameters}')
+            if self.verbose:
+                print(f'getting cached PVGIS data, {api_parameters}')
         return self.cache[request_key]
     
     def get_production_timeserie(self, slope=0, azimuth=0, pvtech='CIS', lat=52.373, lon=9.738, system_loss=14, datayear=2016, datatype='hourly', name='production'):
@@ -85,4 +92,4 @@ class PVGIS(object):
         return pd.Series({_format_datetime(i['time']) : i['P'] for i in data_json['outputs'][datatype]}, name=name)
         
 
-print((PVGIS().get_production_timeserie()))
+#print((PVGIS().get_production_timeserie()))
