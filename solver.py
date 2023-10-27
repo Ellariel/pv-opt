@@ -2,7 +2,7 @@ import time, os, copy, pickle, time, random#, datetime, random, requests, uuid, 
 import pandas as pd, numpy as np
 #from tqdm.notebook import tqdm
 #from pandas import json_normalize
-import constraint, itertools
+import constraint, itertools, functools
 from uuid import uuid4
 
 from utils import Cache, is_empty
@@ -160,17 +160,20 @@ class ConstraintSolver:
         self.problem.addConstraint(self.equipment_square_constraint, "ABC")
         #self.problem.addConstraint(self.battery_voltage_constraint, "BD")
         self.problem.addConstraint(self.battery_capacity_constraint, "ABCDE")        
-        
+    
+    @functools.cache
     def equipment_square_constraint(self, A, B, C):
         loc, eq, eq_count = _locations(A, self.components['location']), self.components['equipment'][B], C
         max_count = sum(_max_equipment_count_in_loc(loc, [eq], self.config['use_roof_sq']))
         #print(f"equipment_square_constraint: {eq_count} <= {max_count}")
         return eq_count <= max_count       
 
+    @functools.cache
     def battery_voltage_constraint(self, B, D):
         eq, bt = self.components['equipment'][B], self.components['battery'][D]
         return eq['pv_voltage'] == bt['battery_voltage']
 
+    @functools.cache
     def battery_capacity_constraint(self, A, B, C, D, E):       
         bt, bt_count = self.components['battery'][D], E        
         _total_building_energy_costs, _total_installation_costs, _total_energy_storage_needed = self.get_cached_solution(A, B, C, D, E)

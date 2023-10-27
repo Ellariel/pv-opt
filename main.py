@@ -23,7 +23,7 @@ config = {'city_solar_energy_price': 1.0,
             'autonomy_period_days': 0.05, # ~1h
             'use_roof_sq' : 1,
             'save_opt_production' : 1,
-            'ray_rate': 0.3,
+            'ray_rate': 0.5,
         }
 components = {}
 #building_objects = []
