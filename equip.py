@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from uuid import uuid4
-import json, os, pickle, time#, random, math
+import os, pickle, time#, random, math
 from datetime import datetime
 import utils
 from pvgis import PVGIS
@@ -133,11 +133,12 @@ class Building:
             filtered = filtered.sort_values(by=['year', 'timestamp'], ascending=False)
             #print(filtered)
             self._production = self.from_storage(filtered.iloc[0]['production'], storage=storage)
+            #print(self._production)
             #print('load_production')
             self._production['t'] = self._production['t'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))#pd.to_datetime(self._production['t'], "%Y-%m-%d %H:%M:%S")
             #print(self._production)
-            self._production.rename(columns={'w' : 'production'}, inplace=True)
-            self._production.set_index('t', inplace=True)
+            self._production.rename(columns={'w' : 'production', 't': 'timestamp'}, inplace=True)
+            self._production.set_index('timestamp', inplace=True)
             return self._production
                 
     def save_production(self, production_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
@@ -164,8 +165,8 @@ class Building:
             #print(self._consumption.info())
             self._consumption['t'] = self._consumption['t'].apply(lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"))
             #self._consumption['t'] = pd.to_datetime(self._consumption['t'], "%Y-%m-%d %H:%M:%S")
-            self._consumption.rename(columns={'w' : 'consumption'}, inplace=True)
-            self._consumption.set_index('t', inplace=True)
+            self._consumption.rename(columns={'w' : 'consumption', 't': 'timestamp'}, inplace=True)
+            self._consumption.set_index('timestamp', inplace=True)
             return self._consumption
                 
     def save_consumption(self, consumption_data, building_uuid=None, year=None, timestamp=None, uuid=None, storage='./', use_pickle=False):
@@ -277,7 +278,7 @@ def _calc_equipment_production(loc, eq):
                              lon=loc['lon'],)
     production = pd.DataFrame(nominal_pv) * (eq['pv_watt_peak'] / 1000) * eq['pv_count']
     #print(production)
-    return production
+    return production.reset_index().rename(columns={'index':'timestamp'}).set_index('timestamp')
 
 def _calc_location_production(loc):
     pv = 0

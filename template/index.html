@@ -109,11 +109,13 @@
                 if (update == true) {
                     value = '?city_solar_energy_price='+document.getElementById('city_solar_energy_price').value;
                     value += '&grid_selling_price='+document.getElementById('grid_selling_price').value;
+                    value += '&grid_buying_price='+document.getElementById('grid_buying_price').value;
                     value += '&top_limit='+document.getElementById('top_limit').value;
                     value += '&max_equipment_count='+document.getElementById('max_equipment_count').value;
                     value += '&min_equipment_count='+document.getElementById('min_equipment_count').value;
                     value += '&autonomy_period_days='+document.getElementById('autonomy_period_days').value;
                     value += '&use_roof_sq='+document.getElementById('use_roof_sq').value;
+                    value += '&ray_rate='+document.getElementById('ray_rate').value;
                     value += '&save_opt_production='+document.getElementById('save_opt_production').value;
 
                     $.get('/api/v1.0/update'+value, function(req) {
@@ -125,11 +127,13 @@
                         if (req.exception == '') {
                             document.getElementById('city_solar_energy_price').value = req.city_solar_energy_price;
                             document.getElementById('grid_selling_price').value = req.grid_selling_price;
+                            document.getElementById('grid_buying_price').value = req.grid_buying_price;
                             document.getElementById('top_limit').value = req.top_limit;
                             document.getElementById('max_equipment_count').value = req.max_equipment_count;
                             document.getElementById('min_equipment_count').value = req.min_equipment_count;
                             document.getElementById('autonomy_period_days').value = req.autonomy_period_days;
                             document.getElementById('use_roof_sq').value = req.use_roof_sq;
+                            document.getElementById('ray_rate').value = req.ray_rate;
                             document.getElementById('save_opt_production').value = req.save_opt_production;
                         }
                     });
@@ -269,6 +273,8 @@
                                         <tr>
                                             <td><div>grid_selling_price:</td><td><input type="text" name="grid_selling_price" id="grid_selling_price"/><br /></div></td>
                                         <tr>
+                                            <td><div>grid_buying_price:</td><td><input type="text" name="grid_buying_price" id="grid_buying_price"/><br /></div></td> 
+                                        <tr>
                                             <td><div>top_limit:</td><td><input type="text" name="top_limit" id="top_limit"/><br /></div></td>
                                         <tr>
                                             <td><div>max_equipment_count:</td><td><input type="text" name="max_equipment_count" id="max_equipment_count"/><br /></div></td>
@@ -278,6 +284,8 @@
                                             <td><div>autonomy_period_days:</td><td><input type="text" name="autonomy_period_days" id="autonomy_period_days"/><br /></div></td>
                                         <tr>
                                             <td><div>use_roof_sq:</td><td><input type="text" name="use_roof_sq" id="use_roof_sq"/><br /></div></td>
+                                        <tr>
+                                            <td><div>ray_rate:</td><td><input type="text" name="ray_rate" id="ray_rate"/><br /></div></td>
                                         <tr>
                                             <td><div>save_opt_production:</td><td><input type="text" name="save_opt_production" id="save_opt_production"/><br /></div></td>
                                         <tr>

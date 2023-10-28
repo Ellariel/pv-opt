@@ -18,6 +18,12 @@ from utils import Cache, is_empty
 # max: Genossenschaft profit = (SPO * BP) + (SEC * CP) – IC - roof renting costs
 # min: building energy cost = (SEC * CP) + (SPU * SP) + roof renting costs
 
+           
+# installation costs = costofequipment and battery
+def total_installation_costs(b, **kwargs):
+    #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
+    return b.total_equipment_costs + b.total_battery_costs
+
 # min: building energy cost = (SEC * CP) + (SPU * SP) + roof renting costs
 def total_building_energy_costs(b, city_solar_energy_price=1.0, grid_selling_price=1.5, **kwargs):
     #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
@@ -25,10 +31,11 @@ def total_building_energy_costs(b, city_solar_energy_price=1.0, grid_selling_pri
            b.total_solar_energy_underproduction * grid_selling_price +\
            b.total_renting_costs
            
-# installation costs = costofequipment and battery
-def total_installation_costs(b, **kwargs):
-    #print(f'city_solar_energy_price: {city_solar_energy_price}, grid_selling_price: {grid_selling_price}')
-    return b.total_equipment_costs + b.total_battery_costs
+# max: Genossenschaft profit = (SPO * BP) + (SEC * CP) – IC - roof renting costs    
+def genossenschaft_profit(b, grid_buying_price=1.5, city_solar_energy_price=1.0, **kwargs):
+    return b.total_solar_energy_overproduction * grid_buying_price +\
+           b.total_solar_energy_consumption * city_solar_energy_price -\
+           total_installation_costs(b) - b.total_renting_costs
 
 Solution = dict(
         uuid = None,
