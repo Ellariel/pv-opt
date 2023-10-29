@@ -9,8 +9,11 @@ from werkzeug.utils import secure_filename
 #from werkzeug.datastructures import FileStorage
 #from flaskwebgui import FlaskUI
 #import jwt
+import sys
 import random
-import threading, os
+import threading
+import os
+import multiprocessing
 #import time
 #from main import *
 
@@ -71,11 +74,18 @@ calculation_results = {}
 #os.environ['FLASK_RUN_PORT'] = '8000'
 #os.environ['FLASK_RUN_HOST'] = "127.0.0.1"
 
-app = Flask(__name__, template_folder='./template', static_folder='./static')
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__, template_folder='./templates', static_folder='./static')
+    
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.sqlite3'
 app.config['SECRET_KEY'] = '!secret_key!'
 app.config['UPLOAD_FOLDER'] = upload_dir
 app.config['MAX_CONTENT_PATH'] = 10 * 1000 * 1000
+app.config['EXPLAIN_TEMPLATE_LOADING'] = True
 
 main.init_components(base_dir)
 
@@ -192,7 +202,9 @@ def api_figure(building_uuid, data_type):
 #########################################################################
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     app.run(host='127.0.0.1', port=5003, debug=True)
+    
     
 
 '''

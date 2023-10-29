@@ -35,9 +35,11 @@ build
 dist
 gui.build
 gui.dist
+hooks
 instance
 cache.pickle
 *.zip
+*.faas
 
 # Installer logs
 pip-log.txt

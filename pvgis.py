@@ -91,5 +91,8 @@ class PVGIS(object):
                                             datayear=datayear, datatype=datatype)
         return pd.Series({_format_datetime(i['time']) : i['P'] for i in data_json['outputs'][datatype]}, name=name)
         
-
-#print((PVGIS().get_production_timeserie()))
+        
+        
+        
+if __name__ == "__main__":
+    print(PVGIS(local_cache_dir=None, verbose=True).get_production_timeserie())

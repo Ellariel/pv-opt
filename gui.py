@@ -1,3 +1,4 @@
+#import setproctitle
 from flaskwebgui import FlaskUI
 #from nicegui import ui
 import app
